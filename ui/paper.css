@@ -38,7 +38,7 @@
 .pp-view { flex: 1; min-height: 120px; overflow: auto; background: var(--dots), var(--well); outline: none; }
 .pp-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px 24px 30px; }
 .pp-frame { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.pp-sheet { overflow: hidden; border-radius: 2px; background: #fff; box-shadow: 0 6px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(0, 0, 0, .08); }
+.pp-sheet { position: relative; overflow: hidden; touch-action: none; border-radius: 2px; background: #fff; box-shadow: 0 6px 24px rgba(0, 0, 0, .35), 0 0 0 1px rgba(0, 0, 0, .08); }
 .pp-cap { font: 11px var(--font-num); color: var(--faint); font-variant-numeric: tabular-nums; }
 .pp-split { flex: none; height: 7px; margin-top: -3px; cursor: row-resize; position: relative; z-index: 1; }
 .pp-split::after { content: ""; position: absolute; left: 50%; top: 2px; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--ink-4); }
@@ -91,6 +91,29 @@
 .pp-field textarea { flex: 1; resize: none; padding: 5px 8px; line-height: 1.4; font-family: var(--font); }
 .pp-today { height: 26px; padding: 0 10px; font-size: 11.5px; }
 
+/* 挿入・置いた物の設定 */
+.pp-insert { gap: 2px 4px; }
+.pp-ilab, .pp-otitle { font-size: 11.5px; color: var(--muted); margin-right: 6px; font-weight: 400; }
+.pp-otitle { font-weight: 600; color: var(--text); }
+.pp-ihint { margin-left: 10px; font-size: 11px; color: var(--faint); }
+.pp-objrow[hidden] { display: none; }
+.pp-objrow { padding: 6px 8px; border-radius: var(--r); background: var(--tint); }
+.pp-color { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
+.pp-color input[type="color"] { width: 28px; height: 24px; padding: 0; border: 1px solid var(--ink-4); border-radius: 6px; background: none; cursor: pointer; }
+.pp-color input[type="color"]:disabled { opacity: .3; cursor: default; }
+.pp-color input[type="checkbox"] { accent-color: rgb(var(--c2-rgb)); margin: 0 0 0 2px; }
+.pp-none { font-size: 11px; }
+.pp-ofield { flex: 1; min-width: 180px; }
+.pp-otextarea { flex: 1; }
+.pp-obtn { height: 26px; padding: 0 10px; font-size: 11.5px; }
+
+/* 選んでいる物の枠とつまみ（画面だけ。印刷には出ない） */
+.pp-selbox { position: absolute; left: 0; top: 0; box-sizing: border-box; pointer-events: none; transform-origin: center;
+  outline: 1.5px solid rgb(var(--c2-rgb)); outline-offset: 1px; }
+.pp-selbox.line { outline: none; }
+.pp-handle { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 1.5px rgb(var(--c2-rgb)), 0 1px 3px rgba(0, 0, 0, .3); pointer-events: auto; cursor: nwse-resize; }
+
 /* 打ち込み欄（いつも横書き。太字・斜体・揃え・ルビが見える） */
 .pe {
   flex: none; overflow: auto; padding: 14px 20px 20px; outline: none; background: var(--ink-2); color: var(--text);
@@ -131,6 +154,14 @@
 .pp-ch, .pp-ruby { position: absolute; display: block; text-align: center; white-space: pre; font-synthesis: weight style; }
 .pp-ruby { display: flex; align-items: center; white-space: nowrap; }
 .pp-ruby i { font-style: normal; }
+.pp-obj { position: absolute; display: block; box-sizing: border-box; }
+img.pp-obj { object-fit: fill; transform-origin: center; }
+.pp-shape { transform-origin: center; }
+.pp-shape > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.pp-line { overflow: visible; pointer-events: none; }
+.pp-otext { position: absolute; inset: 0; display: flex; flex-direction: column; box-sizing: border-box; line-height: 1.5; white-space: pre-wrap; overflow: hidden; }
+.pp-otext > div { flex: none; }
+.pp-otext rt { font-size: .5em; }
 .pp-no { position: absolute; left: 0; right: 0; text-align: center; line-height: 1; opacity: .7; font-family: var(--font-num); }
 
 /* ---- 印刷: 紙（#pp-print）だけを出す ---- */

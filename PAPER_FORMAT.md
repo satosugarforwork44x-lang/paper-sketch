@@ -56,4 +56,29 @@
 | `theme` | `white` `kinari` `sakura` `wakakusa` `sora` `shu` `houshoshi` |
 | `ruby` | ルビを出すか |
 
+## 紙の上に置く物（objects）
+
+絵・図形・文字ボックス。寸法は **mm**（紙の左上から）、`page` は 1 から。後ろに書いた物ほど手前に出ます。
+
+```json
+"objects": [
+  { "id": "o1", "kind": "image", "page": 1, "x": 22, "y": 20, "w": 120, "h": 90, "rot": 0, "opacity": 1, "behind": false, "src": "3f2a…c1.png" },
+  { "id": "o2", "kind": "shape", "shape": "round", "page": 1, "x": 128, "y": 18, "w": 62, "h": 26, "rot": 0, "opacity": 1, "behind": false,
+    "stroke": "#e0623a", "fill": "#fff6ea", "lineWidth": 0.6,
+    "text": "**10月14日**\nはれ", "size": 16, "color": "#7a3b22", "vertical": false, "align": "center", "font": "" },
+  { "id": "o3", "kind": "shape", "shape": "arrow", "page": 1, "x": 150, "y": 44, "w": -28, "h": 22, "stroke": "#e0623a", "lineWidth": 0.7 }
+]
+```
+
+| 項目 | 値 |
+|---|---|
+| `kind` | `image`（絵）/ `shape`（図形。`text` を入れると文字ボックス） |
+| `shape` | `rect` `round`（角丸）`ellipse` `line` `arrow`。線と矢印は (x, y) から (x+w, y+h) へ引く（w・h は負でもよい） |
+| `src` | 絵の名前。絵は `Paper Sketch\_images` に置いてある（名前は中身のハッシュ）。Claude が新しい絵を足すことはできない |
+| `stroke` `fill` | `#rrggbb` か `"none"` |
+| `text` | 本文と同じ記法（`**太字**`、`｜漢字《かんじ》`、改行で段落） |
+| `size` | 文字の大きさ pt。`vertical: true` で縦書き。`align`: `start` `center` `end` |
+| `behind` | `true` で本文の文字の後ろ（地紋・飾り） |
+| `rot` | 角度（度）。線には使わない |
+
 範囲の外の値は、読み込むときに近い値に直されます（ファイルは壊れません）。

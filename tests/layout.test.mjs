@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parse, parseLine, strip, countChars, withAlign } from "../ui/markup.js";
 import { breakLines, layout, geometry } from "../ui/layout.js";
+import { hit, topmost } from "../ui/objects.js";
 
 const T = JSON.parse(readFileSync(new URL("../templates.json", import.meta.url), "utf8"));
 const docOf = (id, body = "", meta = {}) => {
@@ -76,4 +77,18 @@ test("自由に組む: 文字の大きさと行間から字数・行数が決ま
   assert.equal(g.C, Math.floor(g.colLen / (10.5 * 25.4 / 72)));
   d.text.lineHeight = 1.5;
   assert.ok(geometry(d, T.sizes).N > g.N);
+});
+
+test("置いた物: 当たり判定（回転・線・前面と背面）", () => {
+  const box = { id: "a", kind: "shape", shape: "rect", x: 10, y: 10, w: 20, h: 10, rot: 0, behind: false, lineWidth: 0.4 };
+  assert.ok(hit(box, 15, 15));
+  assert.ok(!hit(box, 35, 15));
+  assert.ok(hit({ ...box, rot: 90 }, 20, 22));            // 90° 回すと縦長になる
+  assert.ok(!hit({ ...box, rot: 90 }, 11, 15));
+  const line = { id: "l", kind: "shape", shape: "arrow", x: 0, y: 0, w: 30, h: 30, lineWidth: 0.5 };
+  assert.ok(hit(line, 15, 16));
+  assert.ok(!hit(line, 15, 25));
+  const back = { ...box, id: "b", behind: true }, front = { ...box, id: "f" };
+  assert.equal(topmost([front, back], 15, 15).id, "f");   // 背面より前面
+  assert.equal(topmost([back, { ...front, id: "g" }, { ...front, id: "h" }], 15, 15).id, "h");   // 後から置いた物が手前
 });

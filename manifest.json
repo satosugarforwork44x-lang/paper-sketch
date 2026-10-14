@@ -1,29 +1,77 @@
 {
   "id": "paper",
   "name": "ペーパースケッチ",
-  "version": "0.1.0",
-  "summary": "便箋・作文帳・文庫本などの紙に、縦書きでも横書きでも書いて印刷する。ルビ・揃え・太字。AI で校正",
+  "version": "0.2.0",
+  "summary": "便箋・作文帳・文庫本などの紙に、縦書きでも横書きでも書いて印刷する。絵・図形・文字ボックスも置ける。ルビ・揃え・太字。AI で校正",
   "kind": "panel",
   "runtime": "python",
   "api": "api.py",
   "visibility": "public",
-  "requires": { "hub": ">=0.8", "moduleApi": 1 },
+  "requires": {
+    "hub": ">=0.8",
+    "moduleApi": 1
+  },
   "hub": {
     "window": "panel",
-    "size": [980, 940],
+    "size": [
+      980,
+      940
+    ],
     "ui": "ui/panel.js",
-    "tile": { "icon": "text" }
+    "tile": {
+      "icon": "text"
+    },
+    "blob": "blob_path",
+    "upload": [
+      "save_image"
+    ]
   },
   "exports": [
-    { "fn": "state", "summary": "保存先・文書の一覧・紙のひな形" },
-    { "fn": "create", "summary": "ひな形から新しい文書を作る" },
-    { "fn": "open_paper", "summary": "文書を開く" },
-    { "fn": "save_paper", "summary": "文書を保存する" },
-    { "fn": "poll", "summary": "外で書き換えられたか（更新時刻）" },
-    { "fn": "rename", "summary": "名前を変える" },
-    { "fn": "import_files", "summary": ".txt / .paper.json を読み込んで文書にする" },
-    { "fn": "export", "summary": "txt（元に戻せる）・本文だけの txt・.paper.json に書き出す（上書きしない）" },
-    { "fn": "reveal", "summary": "保存先・書き出したファイルをエクスプローラーで見せる" }
+    {
+      "fn": "state",
+      "summary": "保存先・文書の一覧・紙のひな形"
+    },
+    {
+      "fn": "create",
+      "summary": "ひな形から新しい文書を作る"
+    },
+    {
+      "fn": "open_paper",
+      "summary": "文書を開く"
+    },
+    {
+      "fn": "save_paper",
+      "summary": "文書を保存する"
+    },
+    {
+      "fn": "poll",
+      "summary": "外で書き換えられたか（更新時刻）"
+    },
+    {
+      "fn": "rename",
+      "summary": "名前を変える"
+    },
+    {
+      "fn": "import_files",
+      "summary": ".txt / .paper.json を読み込んで文書にする"
+    },
+    {
+      "fn": "add_image_files",
+      "summary": "PC の絵のファイルを取り込む（_images に写す）"
+    },
+    {
+      "fn": "export",
+      "summary": "txt（元に戻せる）・本文だけの txt・.paper.json に書き出す（上書きしない）"
+    },
+    {
+      "fn": "reveal",
+      "summary": "保存先・書き出したファイルをエクスプローラーで見せる"
+    }
   ],
-  "locales": { "en": { "name": "Paper Sketch", "summary": "Write on letter paper, composition grids or pocket-book pages — vertical or horizontal — and print. Ruby, alignment, bold. Proofread with AI" } }
+  "locales": {
+    "en": {
+      "name": "Paper Sketch",
+      "summary": "Write on letter paper, composition grids or pocket-book pages — vertical or horizontal — add pictures, shapes and text boxes, and print. Ruby, alignment, bold. Proofread with AI"
+    }
+  }
 }

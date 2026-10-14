@@ -1,5 +1,6 @@
 // paper/ui/render.js — 組んだページを DOM にする（寸法はすべて mm）。画面のプレビューと印刷で同じ関数を使う。
-import { glyphBox, gridLines, rubyBox } from "./layout.js";
+import { glyphBox, gridLines, rubyBox, PT } from "./layout.js";
+import { parse } from "./markup.js";
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const mm = (v) => `${+v.toFixed(3)}mm`;
@@ -15,7 +16,57 @@ export function fontStack(font) {
   return `"${String(font).replace(/["\\]/g, "")}", ${fb}`;
 }
 
-/** 1 ページを描く。opts: { theme, ruby, pageNo, total, showNumber } */
+// ---------- 紙の上に置く物（絵・図形・文字ボックス）。寸法は mm、紙の左上から ----------
+/** 図形の中の文字（記法つき）を HTML にする。ルビは <ruby> */
+function richText(text, ruby) {
+  return parse(text).map((p) => {
+    const inner = p.runs.map((r) => {
+      let h = esc(r.t);
+      if (r.r) h = ruby ? `<ruby>${h}<rt>${esc(r.r)}</rt></ruby>` : h;
+      if (r.i) h = `<i>${h}</i>`;
+      if (r.b) h = `<b>${h}</b>`;
+      return h;
+    }).join("");
+    const al = p.align === "end" ? "end" : p.align === "center" ? "center" : p.align === "start" ? "" : "justify";
+    return `<div${al ? ` style="text-align:${al}${p.align === "distribute" ? ";text-align-last:justify" : ""}"` : ""}>${inner || "<br>"}</div>`;
+  }).join("");
+}
+
+/** 線・矢印の、紙の上の 2 点（mm） */
+export const lineEnds = (o) => [o.x, o.y, o.x + o.w, o.y + o.h];
+
+/** 置く物を 1 つ HTML にする。opts: { imageUrl(src), ruby, font } */
+export function objectHtml(o, opts) {
+  const op = o.opacity < 1 ? `;opacity:${o.opacity}` : "";
+  if (o.kind === "image") {
+    return `<img class="pp-obj" alt="" draggable="false" src="${esc(opts.imageUrl(o.src))}" style="left:${mm(o.x)};top:${mm(o.y)};width:${mm(o.w)};height:${mm(o.h)}${o.rot ? `;transform:rotate(${o.rot}deg)` : ""}${op}">`;
+  }
+  const sw = o.stroke === "none" ? 0 : o.lineWidth;
+  if (o.shape === "line" || o.shape === "arrow") {          // 線は向きがあるので、紙全体の大きさの SVG に描く
+    const [x1, y1, x2, y2] = lineEnds(o);
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+    const hs = Math.max(2.4, o.lineWidth * 5), back = o.shape === "arrow" ? hs * 0.8 : 0;
+    let h = `<svg class="pp-obj pp-line" style="left:0;top:0;width:100%;height:100%${op}" viewBox="0 0 ${opts.W} ${opts.H}">` +
+      `<line x1="${x1}" y1="${y1}" x2="${x2 - ux * back}" y2="${y2 - uy * back}" stroke="${o.stroke === "none" ? "#333333" : o.stroke}" stroke-width="${o.lineWidth}" stroke-linecap="round"/>`;
+    if (o.shape === "arrow") {
+      const px = -uy, py = ux;
+      h += `<polygon points="${x2},${y2} ${x2 - ux * hs + px * hs * 0.45},${y2 - uy * hs + py * hs * 0.45} ${x2 - ux * hs - px * hs * 0.45},${y2 - uy * hs - py * hs * 0.45}" fill="${o.stroke === "none" ? "#333333" : o.stroke}"/>`;
+    }
+    return `${h}</svg>`;
+  }
+  const w = o.w, hgt = o.h, r = o.shape === "round" ? Math.min(w, hgt) * 0.18 : 0;
+  const fill = o.fill === "none" ? "none" : o.fill, stroke = o.stroke === "none" ? "none" : o.stroke;
+  const shape = o.shape === "ellipse"
+    ? `<ellipse cx="${w / 2}" cy="${hgt / 2}" rx="${Math.max(0, w / 2 - sw / 2)}" ry="${Math.max(0, hgt / 2 - sw / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`
+    : `<rect x="${sw / 2}" y="${sw / 2}" width="${Math.max(0, w - sw)}" height="${Math.max(0, hgt - sw)}" rx="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+  const pad = Math.min(2.5, Math.min(w, hgt) * 0.12) + (o.shape === "ellipse" ? Math.min(w, hgt) * 0.12 : 0);
+  const text = o.text ? `<div class="pp-otext" style="padding:${mm(pad)};writing-mode:${o.vertical ? "vertical-rl" : "horizontal-tb"};justify-content:center;` +
+    `text-align:${o.align};font-size:${mm(o.size * PT)};color:${o.color};font-family:${esc(fontStack(o.font || opts.font))}"><div>${richText(o.text, opts.ruby)}</div></div>` : "";
+  return `<div class="pp-obj pp-shape" style="left:${mm(o.x)};top:${mm(o.y)};width:${mm(w)};height:${mm(hgt)}${o.rot ? `;transform:rotate(${o.rot}deg)` : ""}${op}">` +
+    `<svg viewBox="0 0 ${w} ${hgt}" preserveAspectRatio="none">${shape}</svg>${text}</div>`;
+}
+
+/** 1 ページを描く。opts: { theme, ruby, pageNo, total, showNumber, objects, imageUrl } */
 export function renderPage(doc, g, page, opts) {
   const th = opts.theme;
   const el = document.createElement("div");
@@ -37,6 +88,8 @@ export function renderPage(doc, g, page, opts) {
     }
     parts.push(`${s}</svg>`);
   }
+  const objs = opts.objects || [], oo = { imageUrl: opts.imageUrl || ((x) => x), ruby: opts.ruby, font: doc.text.font, W: g.W, H: g.H };
+  for (const o of objs) if (o.behind) parts.push(objectHtml(o, oo));        // 背面: 文字の下
   // 文字
   const wm = g.vertical ? "vertical-rl" : "horizontal-tb";
   for (const line of page.lines) {
@@ -69,6 +122,7 @@ export function renderPage(doc, g, page, opts) {
       }
     }
   }
+  for (const o of objs) if (!o.behind) parts.push(objectHtml(o, oo));       // 前面: 文字の上
   if (opts.showNumber) {
     const y = g.H - doc.page.margin[2] / 2;
     parts.push(`<span class="pp-no" style="top:${mm(y - 1.6)};font-size:${mm(3)}">${opts.pageNo}</span>`);

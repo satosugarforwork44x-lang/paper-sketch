@@ -119,6 +119,57 @@ class PaperTest(unittest.TestCase):
         self.api.reveal(file="..\\..\\Windows\\win.ini")
         self.assertEqual(Path(seen[0]), Path(self.api.state()["folder"]))
 
+    PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 32
+
+    def test_images_are_stored_once_and_served_only_from_the_folder(self):
+        pic = self.tmp / "花.png"
+        pic.write_bytes(self.PNG)
+        a = self.api.add_image_files([str(pic), str(self.tmp / "x.txt")])
+        b = self.api.save_image(self.PNG)
+        self.assertEqual(a["made"][0], b["src"])
+        self.assertEqual(len(a["skipped"]), 1)
+        self.assertTrue(self.api.blob_path(b["src"]).is_file())
+        for bad in ("../x.png", "abc.png", b["src"].replace(".png", ".exe")):
+            with self.assertRaises(self.api.PaperError):
+                self.api.blob_path(bad)
+        with self.assertRaises(self.api.PaperError):
+            self.api.save_image(b"MZ not an image")
+
+    def test_objects_are_normalized(self):
+        name = self.api.create("letter", "o")["name"]
+        doc = self._doc(name)
+        src = self.api.save_image(self.PNG)["src"]
+        doc["objects"] = [
+            {"kind": "image", "src": src, "x": 10, "y": 20, "w": 50, "h": 40, "page": 1, "behind": True},
+            {"kind": "shape", "shape": "arrow", "x": 5, "y": 5, "w": -30, "h": 10, "stroke": "#ff0000"},
+            {"kind": "shape", "shape": "round", "text": "**お知らせ**", "fill": "javascript:alert(1)", "w": 9999},
+            {"kind": "image", "src": "../../secret.png"},
+            {"kind": "video"},
+        ]
+        r = self.api.save_paper(name, doc)
+        self.assertEqual(len(r["warnings"]), 2)
+        got = self._doc(name)["objects"]
+        self.assertEqual([o["kind"] for o in got], ["image", "shape", "shape"])
+        self.assertEqual(got[1]["w"], -30)
+        self.assertEqual(got[2]["fill"], "none")
+        self.assertEqual(got[2]["w"], 600)
+        self.assertEqual(len({o["id"] for o in got}), 3)
+        self.assertEqual(self.api.open_paper(name)["missing"], [])
+
+    def test_objects_survive_txt_and_json_roundtrip(self):
+        name = self.api.create("memo", "rt")["name"]
+        doc = self._doc(name)
+        src = self.api.save_image(self.PNG)["src"]
+        doc["objects"] = [{"kind": "image", "src": src, "x": 1, "y": 2, "w": 3, "h": 4},
+                          {"kind": "shape", "shape": "ellipse", "text": "｜吹《ふ》き出し", "vertical": True}]
+        self.api.save_paper(name, doc)
+        before = self._doc(name)
+        for kind in ("txt", "json"):
+            out = self.api.export(name, kind)
+            made = self.api.import_files([out["path"]])
+            self.assertEqual(made["warnings"], [])
+            self.assertEqual(self._doc(made["made"][0]), before)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@
 
 An extension for **[Hub](https://github.com/satosugarforwork44x-lang/desktop-hub)**, a workbench that sits at the edge of the Windows desktop.
 Pick a paper — letter paper, a memorial address, a school composition grid, a pocket book page — write in **vertical or horizontal** Japanese (or English), and print it or save it as a PDF.
-Ruby (furigana), alignment, bold, italic, line and letter spacing work the way they do in Word, and proofreading goes to AI (Claude, ChatGPT, Gemini).
+Ruby (furigana), alignment, bold, italic, line and letter spacing work the way they do in Word, **pictures, shapes and text boxes** can be placed on the paper, and proofreading goes to AI (Claude, ChatGPT, Gemini).
 
 ![Paper Sketch — letter paper with the page preview on top and the writing area below](docs/paper-sketch.png)
 
@@ -37,6 +37,8 @@ So Paper Sketch is just **pick a paper → write → print**.
 | **No italic in vertical writing** | Japanese fonts have no italics and slanted vertical text breaks. The data is kept and shows again in horizontal writing |
 | **Japanese line-breaking rules** | 、。 hang at the line end; characters that must not start a line (」ー っ …) take the previous character with them |
 | **An exported .txt reopens exactly as it was** | The first line holds the paper settings. For other apps (iPhone Notes…) use “Export text only” |
+| **Pictures and shapes sit on the paper** | They are kept by position on the page (mm), apart from the text flow, so editing the text never moves them and print matches the screen. Text does not wrap around them (“Behind text” turns them into a backdrop) |
+| **Pictures are stored once, by hash** | Imported pictures are copied to `Paper Sketch\_images` under a hash of their content. One copy per picture, and an exported document still points to the same pictures |
 | **Nothing is overwritten** | Exports become `name (2).txt`. Edits save in place, and changes made outside (by Claude) can be undone with Ctrl+Z |
 
 ## Papers
@@ -62,6 +64,9 @@ Every paper's size (A4, B5, A5, A6), orientation, writing direction, rules (plai
 | **Bold, italic** | `Ctrl+B` / `Ctrl+I` (italic in horizontal writing only) |
 | **Ruby** | Select text, press Ruby. Click a ruby to edit or remove it. Show or hide ruby on paper |
 | **Title, date, signature** | Placed the way each paper expects (letters: date and signature after the text; compositions: title on line 1, name on line 2). “Today” writes 令和八年十月十四日 in vertical writing |
+| **Pictures** | The picture button, paste (`Ctrl+V`) or drop from the PC. PNG, JPEG, GIF, WebP, BMP. Resize from the corners (keeps proportions, `Shift` for free), opacity, angle, behind text |
+| **Shapes and text boxes** | Box, rounded box, circle, line, arrow. Line color and width, fill. Text inside a shape (bold and ruby too) with size, color, vertical writing and alignment |
+| **Working with them** | Click to select, drag to move, arrow keys 1 mm (`Shift` 5 mm), `Ctrl+D` duplicate, `Delete` remove, forward / backward. Everything undoes with `Ctrl+Z` |
 | **Print / PDF** | `Ctrl+P`. Choose “Microsoft Print to PDF” to save a PDF |
 | **Open** | Drop a `.txt` (UTF-8 or Shift_JIS) or `.paper.json` on the panel |
 | **Export** | .txt that reopens as is, text only (.txt, ruby as 漢字（かんじ）), `.paper.json` |
@@ -83,7 +88,7 @@ Requires **Hub 0.8 or later**. No Python packages are needed (the UI is HTML, sa
 
 ## File format
 
-`<name>.paper.json` is a short JSON with the paper settings and the text (a string with marks). See [PAPER_FORMAT.md](PAPER_FORMAT.md).
+`<name>.paper.json` is a short JSON with the paper settings, the text (a string with marks) and the things placed on the paper. See [PAPER_FORMAT.md](PAPER_FORMAT.md).
 
 ```text
 　拝啓　秋も深まり、｜紅葉《もみじ》の美しい季節になりました。
@@ -107,6 +112,7 @@ Requires **Hub 0.8 or later**. No Python packages are needed (the UI is HTML, sa
 | `ui/render.js` | Turns a laid-out page into DOM in millimetres (shared by preview and print) |
 | `ui/markup.js` | Reads and writes the formatting marks |
 | `ui/editor.js` | The formatted typing area ↔ the text |
+| `ui/objects.js` | Selecting, moving, resizing and setting up pictures, shapes and text boxes |
 | `ui/panel.js` | The panel |
 
 ## Tests
@@ -118,5 +124,4 @@ node --test tests/layout.test.mjs
 
 ## Next
 
-- Pictures (decorations for letters and invitations, the picture in a picture diary)
 - Tate-chu-yoko (two-digit numbers set horizontally inside vertical text)

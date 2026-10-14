@@ -2,12 +2,13 @@
 // ・データは「Paper Sketch」フォルダの <名前>.paper.json。外（Claude など）で書き換えられたら読み直す
 // ・組版は layout.js、描くのは render.js（プレビューと印刷で同じ）。打ち込み欄は editor.js
 // ・書式の単位: 文書全体（書体・大きさ・行間・字間）/ 段落（揃え）/ 文字（太字・斜体・ルビ）
-import { selectBox } from "/ui/js/hub.js";
+import { selectBox, TOKEN } from "/ui/js/hub.js";
 import { icons } from "/ui/js/icons.js";
 import { countChars, strip } from "./markup.js";
 import { layout, PT, setMeasure } from "./layout.js";
 import { fontStack, renderPage } from "./render.js";
 import * as ed from "./editor.js";
+import { attachObjects } from "./objects.js";
 
 const EN = (document.documentElement.lang || navigator.language || "ja").startsWith("en");
 const L = EN ? {
@@ -36,6 +37,13 @@ const L = EN ? {
   aiPrompt: (b) => `Please proofread the following text. Fix typos, wrong words and inconsistent spelling only; keep the style and meaning.\nKeep the formatting marks as they are: **bold**, *italic*, ｜base《ruby》, and >> >< <> == at the start of a line (alignment).\nReturn only the corrected text.\n---\n${b}`,
   status: (p, c) => `${p} page${p > 1 ? "s" : ""} · ${c.toLocaleString()} characters`, perPage: (c, n) => `${c} × ${n} per page`,
   pt: (v) => `${v.toFixed(1)} pt`, skipped: (s) => `Could not open: ${s}`, newName: "New name", page: (n, t) => `${n} / ${t}`,
+  obj: { insert: "Insert", addImage: "Picture (or paste / drop an image)", addText: "Text box", textDefault: "Text",
+    shapes: { rect: "Box", round: "Rounded box", ellipse: "Circle", line: "Line", arrow: "Arrow" },
+    hint: "Click to select · drag to move · drag a corner to resize · Delete to remove",
+    image: "Picture", shape: "Shape", line: "Line", stroke: "Line", lineWidth: "Width", fill: "Fill", none: "None",
+    text: "Text", textPh: "Text in the shape (**bold**, ｜base《ruby》)", size: "Size", color: "Color", vertical: "Vertical",
+    opacity: "Opacity", rot: "Angle", behind: "Behind text", forward: "Forward", backward: "Backward", forwardTip: "Bring forward", backwardTip: "Send backward",
+    dup: "Duplicate", del: "Delete" },
 } : {
   title: "ペーパースケッチ", newDoc: "新しく作る", recent: "最近の文書", empty: "まだありません。上の紙から選んでください。",
   dropNote: ".txt や .paper.json をここに落とすと開けます", pick: "ファイルを開く…",
@@ -62,6 +70,13 @@ const L = EN ? {
   aiPrompt: (b) => `次の文章を校正してください。誤字・脱字・言葉の誤り・表記ゆれだけを直し、文体と内容は変えないでください。\n書式の記号はそのまま残してください: **太字**、*斜体*、｜親文字《ルビ》、行頭の >> >< <> ==（揃え）。\n直した文章だけを返してください。\n---\n${b}`,
   status: (p, c) => `${p} ページ ・ ${c.toLocaleString()} 字`, perPage: (c, n) => `1 ページ ${c}字×${n}行`,
   pt: (v) => `${v.toFixed(1)} pt`, skipped: (s) => `開けなかったもの: ${s}`, newName: "新しい名前", page: (n, t) => `${n} / ${t}`,
+  obj: { insert: "挿入", addImage: "絵（貼り付け・ドロップでも置けます）", addText: "文字ボックス", textDefault: "文字",
+    shapes: { rect: "四角", round: "角丸", ellipse: "丸", line: "線", arrow: "矢印" },
+    hint: "クリックで選ぶ ・ ドラッグで動かす ・ 角のつまみで大きさ ・ Delete で消す",
+    image: "絵", shape: "図形", line: "線", stroke: "線", lineWidth: "太さ", fill: "塗り", none: "なし",
+    text: "文字", textPh: "図形の中の文字（**太字**、｜漢字《かんじ》）", size: "大きさ", color: "文字色", vertical: "縦書き",
+    opacity: "不透明度", rot: "角度", behind: "文字の後ろ", forward: "前へ", backward: "後ろへ", forwardTip: "1 つ手前へ", backwardTip: "1 つ奥へ",
+    dup: "複製", del: "消す" },
 };
 
 const svg = (d) => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -79,6 +94,10 @@ const IC = {
   italic: svg('<path d="M10 5h8M6 19h8M14 5l-4 14"/>'),
   ruby: svg('<path d="M5 20l3.5-9 3.5 9M6.3 17h4.4"/><path d="M14 20v-6a2.5 2.5 0 0 1 5 0v6M14 17h5"/><path d="M7 5.5h10" stroke-width="1.4"/>'),
   layout: svg('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>'),
+  image: icons.image || svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 3 3 3-3 5 5"/>'),
+  textbox: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke-dasharray="2.5 2"/><path d="M8.5 9h7M12 9v7"/>'),
+  rect: svg('<rect x="4" y="6" width="16" height="12" rx="1"/>'), round: svg('<rect x="4" y="6" width="16" height="12" rx="4"/>'),
+  ellipse: svg('<ellipse cx="12" cy="12" rx="8" ry="6.5"/>'), line: svg('<path d="M5 19 19 5"/>'), arrow: svg('<path d="M5 19 19 5"/><path d="M11 5h8v8"/>'),
 };
 const ALIGNS = ["start", "center", "end", "justify", "distribute"];
 const FONTS = [["Yu Mincho", "游明朝"], ["Yu Gothic", "游ゴシック"], ["BIZ UDPMincho", "BIZ UDP明朝"], ["BIZ UDPGothic", "BIZ UDPゴシック"],
@@ -127,12 +146,13 @@ export async function mount(el, ctx) {
   el.innerHTML = `<div class="pp"><div class="pp-home" hidden></div><div class="pp-edit" hidden>
     <div class="pp-view" tabindex="-1"><div class="pp-pages"></div></div>
     <div class="pp-split" role="separator" aria-orientation="horizontal"></div>
-    <div class="pp-tools"><div class="pp-row pp-paper"></div><div class="pp-row pp-type"></div><div class="pp-row pp-meta"></div></div>
+    <div class="pp-tools"><div class="pp-row pp-paper"></div><div class="pp-row pp-type"></div><div class="pp-row pp-meta"></div><div class="pp-row pp-insert"></div><div class="pp-row pp-objrow" hidden></div></div>
     <div class="pp-editor pe" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div>
   </div></div>`;
   const $ = (s) => el.querySelector(s);
   const home = $(".pp-home"), edit = $(".pp-edit"), view = $(".pp-view"), pagesEl = $(".pp-pages"), editor = $(".pp-editor");
   editor.dataset.ph = L.editorPh;
+  const imageUrl = (src) => `/blob/paper/${encodeURIComponent(src)}?t=${encodeURIComponent(TOKEN)}`;
   editor.style.height = `${store.get("editorH", 220)}px`;
 
   // ---------- 見出しのボタン ----------
@@ -236,7 +256,11 @@ export async function mount(el, ctx) {
       if (r.made.length) await open(r.made.at(-1));
     } catch (e) { ctx.toast(e.message, "error"); }
   }
-  ctx.onNativeDrop((paths) => { if (paths?.length) importFiles(paths); });
+  ctx.onNativeDrop(async (paths) => {
+    if (!paths?.length) return;
+    if (doc && !edit.hidden && await objs.dropPaths(paths)) return;     // 絵なら紙に置く
+    importFiles(paths);
+  });
 
   // ---------- 開く・保存 ----------
   async function open(n, quiet = false) {
@@ -318,6 +342,7 @@ export async function mount(el, ctx) {
     editor.innerHTML = ed.toHtml(doc.body);
     editor.classList.toggle("hide-ruby", !doc.ruby);
     buildTools();
+    objs.sync();
     relayout();
   }
 
@@ -667,7 +692,7 @@ export async function mount(el, ctx) {
         pagesEl.append(f);
         io.observe(f);
       }
-      const key = gkey + JSON.stringify(page.lines);
+      const key = gkey + JSON.stringify(page.lines) + JSON.stringify(objs.objsOn(k));
       f.querySelector(".pp-cap").textContent = L.page(k + 1, total);
       f.querySelector(".pp-sheet").style.cssText = `width:${laid.g.W * PX * s}px;height:${laid.g.H * PX * s}px`;
       if (f._key !== key) { f._key = key; f._page = page; f._k = k; f._painted = false; if (f._visible) paintFrame(f); }
@@ -682,9 +707,19 @@ export async function mount(el, ctx) {
   function paintFrame(f) {
     if (f._painted || !f._page || !laid) return;
     f._painted = true;
-    const page = renderPage(doc, laid.g, f._page, { theme: st.themes[doc.theme], ruby: doc.ruby, pageNo: f._k + 1, showNumber: doc.meta.pageNumbers });
+    const page = renderPage(doc, laid.g, f._page, { theme: st.themes[doc.theme], ruby: doc.ruby, pageNo: f._k + 1, showNumber: doc.meta.pageNumbers,
+      objects: objs.objsOn(f._k), imageUrl });
     page.style.zoom = scale();
     f.querySelector(".pp-sheet").replaceChildren(page);
+    objs.decorate(f);
+  }
+  /** 1 ページだけ描き直す（物を動かしている最中） */
+  function repaint(k) {
+    const f = frames[k];
+    if (!f) return;
+    f._painted = false;
+    f._key = null;
+    paintFrame(f);
   }
   function followCaret() {                // 打っている所のページを見せる
     if (!laid || document.activeElement !== editor) return;
@@ -728,9 +763,12 @@ export async function mount(el, ctx) {
     const style = document.createElement("style");
     style.textContent = `@page { size: ${r.g.W}mm ${r.g.H}mm; margin: 0; }`;
     box.append(style);
-    r.pages.forEach((p, k) => box.append(renderPage(doc, r.g, p, { theme: st.themes[doc.theme], ruby: doc.ruby, pageNo: k + 1, showNumber: doc.meta.pageNumbers })));
+    const total = r.pages.length;
+    r.pages.forEach((p, k) => box.append(renderPage(doc, r.g, p, { theme: st.themes[doc.theme], ruby: doc.ruby, pageNo: k + 1, showNumber: doc.meta.pageNumbers,
+      objects: doc.objects.filter((o) => Math.min(o.page, total) === k + 1), imageUrl })));
     document.body.append(box);
     await document.fonts?.ready;
+    await Promise.all([...box.querySelectorAll("img")].map((im) => im.decode().catch(() => {})));
     ctx.toast(L.pdfTip, "info", 5000);
     window.print();
     setTimeout(() => box.remove(), 1500);
@@ -790,6 +828,7 @@ export async function mount(el, ctx) {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     const inEditor = document.activeElement === editor;
     const inField = !inEditor && /INPUT|TEXTAREA/.test(document.activeElement?.tagName || "");
+    if (!inEditor && !inField && objs.handleKey(e)) { e.preventDefault(); return; }
     if (mod && k === "z" && !inField) { e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
     if (mod && k === "y" && !inField) { e.preventDefault(); doRedo(); return; }
     if (mod && k === "p") { e.preventDefault(); print(); return; }
@@ -800,6 +839,13 @@ export async function mount(el, ctx) {
     const al = { l: "start", e: "center", r: "end", j: e.shiftKey ? "distribute" : "justify" }[k];
     if (mod && al) { e.preventDefault(); applyAlign(al); }
   });
+
+  // ---------- 紙の上に置く物 ----------
+  const objs = attachObjects({ ctx, L, view, frames, getDoc: () => doc, getLaid: () => laid, snap, changed, repaint, imageUrl,
+    row: $(".pp-objrow"), insertRow: $(".pp-insert"), icons: IC });
+  document.addEventListener("paste", (e) => {                    // 絵の貼り付け（打ち込み欄にいても紙に置く）
+    if (doc && !edit.hidden && !document.querySelector(".pp-dlg")) objs.handlePaste(e);
+  }, true);
 
   // ---------- 始める ----------
   for (const b of editOnly) b.style.display = "none";
