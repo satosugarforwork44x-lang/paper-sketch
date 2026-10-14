@@ -1,8 +1,8 @@
 {
   "id": "paper",
   "name": "ペーパースケッチ",
-  "version": "0.2.0",
-  "summary": "便箋・作文帳・文庫本などの紙に、縦書きでも横書きでも書いて印刷する。絵・図形・文字ボックスも置ける。ルビ・揃え・太字。AI で校正",
+  "version": "0.3.0",
+  "summary": "便箋・作文帳・文庫本などの紙に、縦書きでも横書きでも書いて印刷する。小説の作品ごとの用語集（ルビ・人名）。絵・図形・文字ボックス。AI で校正",
   "kind": "panel",
   "runtime": "python",
   "api": "api.py",
@@ -66,12 +66,32 @@
     {
       "fn": "reveal",
       "summary": "保存先・書き出したファイルをエクスプローラーで見せる"
+    },
+    {
+      "fn": "works",
+      "summary": "作品の一覧"
+    },
+    {
+      "fn": "get_dict",
+      "summary": "作品の用語集を読む"
+    },
+    {
+      "fn": "save_dict",
+      "summary": "作品の用語集を保存する"
+    },
+    {
+      "fn": "create_work",
+      "summary": "作品（用語集）を作る"
+    },
+    {
+      "fn": "rename_work",
+      "summary": "作品の名前を変える（その作品の文書もまとめて）"
     }
   ],
   "locales": {
     "en": {
       "name": "Paper Sketch",
-      "summary": "Write on letter paper, composition grids or pocket-book pages — vertical or horizontal — add pictures, shapes and text boxes, and print. Ruby, alignment, bold. Proofread with AI"
+      "summary": "Write on letter paper, composition grids or pocket-book pages — vertical or horizontal — and print. A per-work glossary for novels (ruby, names). Pictures, shapes and text boxes. Proofread with AI"
     }
   }
 }

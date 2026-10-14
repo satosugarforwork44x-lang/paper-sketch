@@ -116,7 +116,7 @@
 
 /* 打ち込み欄（いつも横書き。太字・斜体・揃え・ルビが見える） */
 .pe {
-  flex: none; overflow: auto; padding: 14px 20px 20px; outline: none; background: var(--ink-2); color: var(--text);
+  flex: 1; min-width: 0; overflow: auto; padding: 14px 20px 20px; outline: none; background: var(--ink-2); color: var(--text);
   font-size: 15px; line-height: 2.05; white-space: pre-wrap; word-break: break-word; caret-color: var(--signal);
 }
 .pe:empty::before, .pe > div:only-child:has(> br:only-child)::before { content: attr(data-ph); color: var(--faint); pointer-events: none; position: absolute; }
@@ -135,6 +135,39 @@
   font-size: 9.5px; line-height: 1; font-weight: 400; font-style: normal; white-space: nowrap; color: var(--muted);
 }
 .pe.hide-ruby .pe-ruby::before { opacity: .35; }
+
+/* 打ち込み欄と用語集 */
+.pp-write { flex: none; display: flex; min-height: 0; }
+.pp-terms { width: 250px; flex: none; display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 10px 10px 8px; border-left: 1px solid var(--line); overflow: hidden; }
+.pp-th { display: flex; align-items: center; gap: 6px; }
+.pp-th > b { font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.pp-th .select.pp-work { flex: 1; min-width: 0; height: 26px; padding: 0 10px; border-radius: var(--pill); font-size: 12px; }
+.pp-th .pp-ib { width: 26px; height: 26px; }
+.pp-tchips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pp-tchips button { height: 22px; padding: 0 9px; border: 0; border-radius: var(--pill); background: var(--ink-2); color: var(--muted); font: 11px var(--font); cursor: pointer; }
+.pp-tchips button[aria-pressed="true"] { background: var(--tint); color: var(--text); }
+.pp-tsearch { height: 26px; padding: 0 10px; border: 1px solid transparent; border-radius: var(--r-s); background: var(--ink-2); color: var(--text); font: 12px var(--font); }
+.pp-tsearch:focus { outline: none; border-color: var(--signal); }
+.pp-tlist { list-style: none; margin: 0; padding: 0; overflow: auto; display: grid; gap: 1px; align-content: start; }
+.pp-term { display: flex; align-items: center; gap: 2px; border-radius: var(--r-s); }
+.pp-term:hover { background: var(--ink-2); }
+.pp-tins { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; height: 30px; padding: 0 8px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.pp-tins .bs { font-size: 13.5px; white-space: nowrap; }
+.pp-tins .rd { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-tins .rl { margin-left: auto; font-size: 10px; color: var(--faint); white-space: nowrap; }
+.pp-term::before { content: ""; flex: none; width: 3px; height: 16px; margin-left: 2px; border-radius: 2px; background: var(--ink-4); }
+.pp-term.k-person::before { background: rgb(var(--c2-rgb)); }
+.pp-term.k-place::before { background: rgb(var(--c1-rgb)); }
+.pp-term.k-reading::before { background: var(--amber); }
+.pp-term .ct { min-width: 16px; font: 10.5px var(--font-num); color: var(--faint); text-align: right; }
+.pp-tedit { width: 24px; height: 24px; opacity: 0; }
+.pp-term:hover .pp-tedit, .pp-tedit:focus-visible { opacity: 1; }
+.pp-tedit .icon { width: 14px; height: 14px; }
+.pp-tnone { margin: 4px 2px; font-size: 11.5px; line-height: 1.6; color: var(--faint); }
+.pp-tdlg { gap: 10px; }
+.pp-tf { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; }
+.pp-tf > span { font-size: 12px; color: var(--muted); }
+.pp-tdlg .rnote { margin: -4px 0 0 92px; }
 
 /* 小さな入力窓 */
 .pp-dlg { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0, 0, 0, .35); }

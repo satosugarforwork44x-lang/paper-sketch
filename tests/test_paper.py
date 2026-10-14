@@ -170,6 +170,53 @@ class PaperTest(unittest.TestCase):
             self.assertEqual(made["warnings"], [])
             self.assertEqual(self._doc(made["made"][0]), before)
 
+    TERMS = [{"base": "東雲", "reading": "しののめ", "kind": "person"},
+             {"base": "本気", "reading": "マジ", "kind": "reading"},
+             {"base": "東雲", "reading": "ちがう"},
+             {"base": "｜蒼《月", "reading": "そうげつ", "rule": "never"}]
+
+    def test_work_dictionary_is_normalized(self):
+        self.api.create_work("夜明けの街")
+        r = self.api.save_dict("夜明けの街", self.TERMS)
+        self.assertEqual([t["base"] for t in r["terms"]], ["東雲", "本気", "蒼月"])
+        self.assertEqual([t["rule"] for t in r["terms"]], ["first", "always", "first"])   # 独自の読みは毎回
+        self.assertEqual(len(r["warnings"]), 1)
+        self.assertEqual(self.api.works(), [{"name": "夜明けの街", "terms": 3}])
+        with self.assertRaises(self.api.PaperError):
+            self.api.create_work("夜明けの街")
+        with self.assertRaises(self.api.PaperError):
+            self.api.get_dict("../x")
+
+    def test_chapters_share_the_work_dictionary_and_rename_follows(self):
+        self.api.save_dict("作品A", self.TERMS[:2])
+        names = [self.api.create("novel", f"第{i}章")["name"] for i in (1, 2)]
+        for n in names:
+            d = self._doc(n); d["work"] = "作品A"; self.api.save_paper(n, d)
+        self.assertEqual(len(self.api.open_paper(names[1])["dict"]["terms"]), 2)
+        r = self.api.rename_work("作品A", "作品B")
+        self.assertEqual(r["docs"], 2)
+        self.assertEqual(self._doc(names[0])["work"], "作品B")
+        self.assertEqual(len(self.api.get_dict("作品B")["terms"]), 2)
+        self.assertEqual(self.api.get_dict("作品A")["terms"], [])
+
+    def test_export_carries_the_dictionary_and_import_restores_it(self):
+        self.api.save_dict("作品C", self.TERMS[:2])
+        n = self.api.create("bunko", "第1章")["name"]
+        d = self._doc(n); d["work"] = "作品C"; d["body"] = "東雲は本気だった。"; d["rubyOnce"] = True
+        self.api.save_paper(n, d)
+        before = self._doc(n)
+        for kind in ("txt", "json"):
+            out = self.api.export(n, kind)
+            self.api._dict_path("作品C").unlink()                  # 用語集が無い PC で読み込むつもり
+            made = self.api.import_files([out["path"]])
+            self.assertEqual(self._doc(made["made"][0]), before)
+            self.assertEqual([t["base"] for t in self.api.get_dict("作品C")["terms"]], ["東雲", "本気"])
+        # すでにある用語は上書きしない
+        self.api.save_dict("作品C", [{"base": "東雲", "reading": "あずまぐも"}])
+        self.api.import_files([out["path"]])
+        got = {t["base"]: t["reading"] for t in self.api.get_dict("作品C")["terms"]}
+        self.assertEqual(got, {"東雲": "あずまぐも", "本気": "マジ"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,7 @@ import { layout, PT, setMeasure } from "./layout.js";
 import { fontStack, renderPage } from "./render.js";
 import * as ed from "./editor.js";
 import { attachObjects } from "./objects.js";
+import { attachTerms } from "./terms.js";
 
 const EN = (document.documentElement.lang || navigator.language || "ja").startsWith("en");
 const L = EN ? {
@@ -44,6 +45,17 @@ const L = EN ? {
     text: "Text", textPh: "Text in the shape (**bold**, ｜base《ruby》)", size: "Size", color: "Color", vertical: "Vertical",
     opacity: "Opacity", rot: "Angle", behind: "Behind text", forward: "Forward", backward: "Backward", forwardTip: "Bring forward", backwardTip: "Send backward",
     dup: "Duplicate", del: "Delete" },
+  rubyOnce: "Same ruby only once", rubyOnceTip: "Hand-written ruby that repeats (same text and reading) is shown only the first time in this document",
+  aiDict: (lines) => `\nThese names and readings are intentional — do not change them:\n${lines}`,
+  terms: { title: "Glossary", noWork: "(no work)", newWorkItem: "+ New work…", newWork: "Name of the work (shared by its chapters)", renameWork: "Rename the work",
+    renamed: (n) => `Renamed (${n} chapter${n === 1 ? "" : "s"} updated)`,
+    needWork: "Choose or create a work above. Its chapters share one glossary of names and readings.",
+    add: "Add a term", edit: "Edit the term", del: "Delete", base: "Text", reading: "Ruby", readingPh: "Leave empty for names without ruby",
+    kind: "Kind", kinds: { person: "Person", place: "Place", term: "Term", reading: "Reading" }, rule: "Ruby",
+    rules: { always: "Every time", first: "First only", none: "Never" }, ruleShort: { always: "every", first: "first", none: "" },
+    ruleNote: { always: "Shown every time (unique readings such as 本気《マジ》).", first: "Shown the first time in each chapter (ordinary readings, names).", none: "No ruby. Kept for clicking into the text." },
+    part: "Also inside longer words (e.g. 真 inside 真実)", note: "Note", all: "All", search: "Search", empty: "No terms yet. Select text and right-click → Add to glossary.",
+    noMatch: "Nothing matches", insertTip: "Click to insert at the cursor", countTip: "Times in this chapter", addSel: "Add to glossary" },
 } : {
   title: "ペーパースケッチ", newDoc: "新しく作る", recent: "最近の文書", empty: "まだありません。上の紙から選んでください。",
   dropNote: ".txt や .paper.json をここに落とすと開けます", pick: "ファイルを開く…",
@@ -77,6 +89,17 @@ const L = EN ? {
     text: "文字", textPh: "図形の中の文字（**太字**、｜漢字《かんじ》）", size: "大きさ", color: "文字色", vertical: "縦書き",
     opacity: "不透明度", rot: "角度", behind: "文字の後ろ", forward: "前へ", backward: "後ろへ", forwardTip: "1 つ手前へ", backwardTip: "1 つ奥へ",
     dup: "複製", del: "消す" },
+  rubyOnce: "同じルビは2回目から外す", rubyOnceTip: "手で書いたルビ（同じ字・同じ読み）を、この文書で初めの1回だけ出します",
+  aiDict: (lines) => `\n次の名前と読みは意図したものです。直さないでください:\n${lines}`,
+  terms: { title: "用語集", noWork: "（作品なし）", newWorkItem: "＋ 新しい作品…", newWork: "作品の名前（章ごとの文書で共有します）", renameWork: "作品の名前を変える",
+    renamed: (n) => `名前を変えました（${n} 章を書き換え）`,
+    needWork: "上で作品を選ぶか作ってください。同じ作品の章どうしで、登場人物や読みの用語集を共有します。",
+    add: "用語を足す", edit: "用語を直す", del: "消す", base: "表記", reading: "読み（ルビ）", readingPh: "ルビの要らない名前は空のまま",
+    kind: "種類", kinds: { person: "人名", place: "地名", term: "用語", reading: "独自の読み" }, rule: "ルビ",
+    rules: { always: "毎回", first: "初出だけ", none: "付けない" }, ruleShort: { always: "毎回", first: "初出", none: "" },
+    ruleNote: { always: "出てくるたびに付けます（本気《マジ》のような独自の読み）", first: "章ごとに、初めて出てきた所だけに付けます（ふつうの読み・人名）", none: "ルビは付けません。クリックで入れるためだけに置きます" },
+    part: "語の一部でも付ける（「真実」の中の「真」にも付ける）", note: "メモ", all: "すべて", search: "さがす", empty: "まだありません。本文で字を選んで右クリック →「用語集に入れる」",
+    noMatch: "見つかりません", insertTip: "クリックでカーソルの位置に入れる", countTip: "この章に出てくる回数", addSel: "用語集に入れる" },
 };
 
 const svg = (d) => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -140,6 +163,8 @@ export async function mount(el, ctx) {
   let saving = null, saveTimer = null, layoutTimer = null, dirty = false;
   const undo = [], redo = [];
   let lastSnap = 0, lastKind = "";
+  let dict = null;           // 作品の用語集 { work, terms, mtime }（作品が無ければ null）
+  const terms = () => dict?.terms || [];
   let lastRange = null;      // 打ち込み欄で最後に選んでいた範囲（道具を押すと選択が消えるため）
   let zoom = store.get("zoom", 1);
 
@@ -147,13 +172,14 @@ export async function mount(el, ctx) {
     <div class="pp-view" tabindex="-1"><div class="pp-pages"></div></div>
     <div class="pp-split" role="separator" aria-orientation="horizontal"></div>
     <div class="pp-tools"><div class="pp-row pp-paper"></div><div class="pp-row pp-type"></div><div class="pp-row pp-meta"></div><div class="pp-row pp-insert"></div><div class="pp-row pp-objrow" hidden></div></div>
-    <div class="pp-editor pe" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div>
+    <div class="pp-write"><div class="pp-editor pe" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div><aside class="pp-terms"></aside></div>
   </div></div>`;
   const $ = (s) => el.querySelector(s);
   const home = $(".pp-home"), edit = $(".pp-edit"), view = $(".pp-view"), pagesEl = $(".pp-pages"), editor = $(".pp-editor");
   editor.dataset.ph = L.editorPh;
   const imageUrl = (src) => `/blob/paper/${encodeURIComponent(src)}?t=${encodeURIComponent(TOKEN)}`;
-  editor.style.height = `${store.get("editorH", 220)}px`;
+  const write = $(".pp-write");
+  write.style.height = `${store.get("editorH", 220)}px`;
 
   // ---------- 見出しのボタン ----------
   const switcherSlot = document.createElement("span");
@@ -268,7 +294,7 @@ export async function mount(el, ctx) {
       const r = await ctx.call("open_paper", { name: n });
       if (quiet && doc) snap("reload");
       else if (name !== n) { undo.length = 0; redo.length = 0; }
-      name = r.name; doc = r.doc; mtime = r.mtime; dirty = false;
+      name = r.name; doc = r.doc; mtime = r.mtime; dirty = false; dict = r.dict;
       if (r.warnings.length) ctx.toast(`${L.warn}: ${r.warnings[0]}`, "info", 6000);
       showEdit();
       const pos = quiet ? ed.caret(editor) : null;
@@ -296,8 +322,9 @@ export async function mount(el, ctx) {
   setInterval(async () => {          // 外（Claude・エディタ）で書き換えられたら読み直す
     if (!name || saving || dirty || document.hidden) return;
     try {
-      const r = await ctx.call("poll", { name });
-      if (r.mtime && mtime && r.mtime !== mtime && !dirty && !saving) { await open(name, true); ctx.toast(L.reloaded); }
+      const r = await ctx.call("poll", { name, work: doc?.work || "" });
+      if (r.mtime && mtime && r.mtime !== mtime && !dirty && !saving) { await open(name, true); ctx.toast(L.reloaded); return; }
+      if (doc?.work && r.dictMtime && r.dictMtime !== dict?.mtime) { await loadDict(); ctx.toast(L.reloaded); }   // 用語集が外で書き換えられた
     } catch { /* 次の回にまた見る */ }
   }, 2000);
   window.addEventListener("beforeunload", () => { if (dirty) flush(); });
@@ -343,6 +370,7 @@ export async function mount(el, ctx) {
     editor.classList.toggle("hide-ruby", !doc.ruby);
     buildTools();
     objs.sync();
+    termsUI.render();
     relayout();
   }
 
@@ -461,7 +489,14 @@ export async function mount(el, ctx) {
     show.querySelector("span").textContent = L.rubyShow;
     show.querySelector("input").checked = doc.ruby;
     show.querySelector("input").addEventListener("change", (e) => setDoc((d) => { d.ruby = e.target.checked; editor.classList.toggle("hide-ruby", !d.ruby); }, false));
-    items.push(sep(), alignSeg, sep(), bBtn, iBtn, rBtn, show);
+    const once = document.createElement("label");
+    once.className = "pp-check";
+    once.title = L.rubyOnceTip;
+    once.innerHTML = `<input type="checkbox"><span></span>`;
+    once.querySelector("span").textContent = L.rubyOnce;
+    once.querySelector("input").checked = doc.rubyOnce;
+    once.querySelector("input").addEventListener("change", (e) => setDoc((d) => { d.rubyOnce = e.target.checked; }, false));
+    items.push(sep(), alignSeg, sep(), bBtn, iBtn, rBtn, show, once);
     type.replaceChildren(...items);
     typeRefs = { alignSeg, bBtn, iBtn };
 
@@ -677,9 +712,9 @@ export async function mount(el, ctx) {
   }
   function relayout() {
     if (!doc) return;
-    laid = layout(doc, st.sizes);
+    laid = layout(doc, st.sizes, terms());
     const s = scale();
-    const gkey = JSON.stringify([doc.page, doc.grid, doc.text, doc.theme, doc.ruby, doc.meta.pageNumbers, s, laid.pages.length]);
+    const gkey = JSON.stringify([doc.page, doc.grid, doc.text, doc.theme, doc.ruby, doc.rubyOnce, doc.work, dict?.mtime, doc.meta.pageNumbers, s, laid.pages.length]);
     const total = laid.pages.length;
     while (frames.length > total) { const f = frames.pop(); io.unobserve(f); f.remove(); }
     laid.pages.forEach((page, k) => {
@@ -702,6 +737,7 @@ export async function mount(el, ctx) {
     const info = g.mode === "free" ? `${L.perPage(g.C * g.cols, g.N)}` : L.perPage(g.C, g.N);
     ctx.setStatus(`${L.status(total, chars)} ・ ${info} ・ ${L.pt(g.font / PT)}`);
     editor.style.fontFamily = fontStack(doc.text.font);
+    if (!$(".pp-terms").contains(document.activeElement)) termsUI.render();   // 出てくる回数を新しくする
     followCaret();
   }
   function paintFrame(f) {
@@ -745,9 +781,9 @@ export async function mount(el, ctx) {
   const split = $(".pp-split");
   split.addEventListener("pointerdown", (e) => {
     split.setPointerCapture(e.pointerId);
-    const y0 = e.clientY, h0 = editor.offsetHeight;
-    const move = (ev) => { editor.style.height = `${Math.min(innerHeight * 0.7, Math.max(90, h0 - (ev.clientY - y0)))}px`; };
-    const up = () => { split.removeEventListener("pointermove", move); split.removeEventListener("pointerup", up); store.set("editorH", editor.offsetHeight); };
+    const y0 = e.clientY, h0 = write.offsetHeight;
+    const move = (ev) => { write.style.height = `${Math.min(innerHeight * 0.7, Math.max(90, h0 - (ev.clientY - y0)))}px`; };
+    const up = () => { split.removeEventListener("pointermove", move); split.removeEventListener("pointerup", up); store.set("editorH", write.offsetHeight); };
     split.addEventListener("pointermove", move);
     split.addEventListener("pointerup", up);
   });
@@ -756,7 +792,7 @@ export async function mount(el, ctx) {
   async function print() {
     if (!doc) return;
     await flush();
-    const r = layout(doc, st.sizes);
+    const r = layout(doc, st.sizes, terms());
     document.getElementById("pp-print")?.remove();
     const box = document.createElement("div");
     box.id = "pp-print";
@@ -789,7 +825,7 @@ export async function mount(el, ctx) {
   async function doExport(kind) {
     try {
       await flush();
-      const r = await ctx.call("export", { name, kind, text: kind === "plain" ? strip(doc.body, doc.ruby ? "paren" : "base") : "" });
+      const r = await ctx.call("export", { name, kind, text: kind === "plain" ? strip(doc.body, doc.ruby ? "paren" : "base", terms(), doc.rubyOnce) : "" });
       ctx.toast(L.exported(r.file));
       ctx.call("reveal", { name, file: r.file }).catch(() => {});
     } catch (e) { ctx.toast(e.message, "error"); }
@@ -809,7 +845,7 @@ export async function mount(el, ctx) {
   function aiMenu() {
     ctx.contextMenu([
       { label: L.aiCopy, onClick: async () => {
-        try { await navigator.clipboard.writeText(L.aiPrompt(doc.body)); ctx.toast(L.aiCopied, "info", 6000); }
+        try { await navigator.clipboard.writeText(L.aiPrompt(doc.body) + (terms().length ? L.aiDict(terms().map((t) => `- ${t.base}${t.reading ? `（${t.reading}）` : ""}`).join("\n")) : "")); ctx.toast(L.aiCopied, "info", 6000); }
         catch (e) { ctx.toast(e.message, "error"); }
       } },
       { label: L.aiPaste, onClick: async () => {
@@ -846,6 +882,20 @@ export async function mount(el, ctx) {
   document.addEventListener("paste", (e) => {                    // 絵の貼り付け（打ち込み欄にいても紙に置く）
     if (doc && !edit.hidden && !document.querySelector(".pp-dlg")) objs.handlePaste(e);
   }, true);
+
+  // ---------- 作品の用語集 ----------
+  async function loadDict() {
+    dict = doc?.work ? await ctx.call("get_dict", { work: doc.work }).catch((e) => { ctx.toast(e.message, "error"); return null; }) : null;
+    termsUI.render();
+    relayout();
+  }
+  const termsUI = attachTerms({ ctx, L, aside: $(".pp-terms"), editor, store, icons: { ...icons, plus: icons.plus || IC.ruby, rename: icons.rename || IC.layout },
+    getDoc: () => doc, getDict: () => dict, works: () => st.works || [],
+    setDict: (d) => { dict = d; termsUI.render(); relayout(); },
+    setWork: async (w) => { setDoc((d) => { d.work = w; }, false); await flush(); await refresh(); await loadDict(); },
+    afterRenameWork: async (w) => { doc.work = w; await refresh(); await loadDict(); },
+    prompt: (title, value) => dialog({ title, value, input: true }),
+    restoreRange, rubyDialog: () => rubyDialog() });
 
   // ---------- 始める ----------
   for (const b of editOnly) b.style.display = "none";

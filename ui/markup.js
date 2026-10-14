@@ -75,12 +75,97 @@ export function parse(body) {
 /** 段落の文字だけ（ルビの読みは含めない）。字数を数えるときに使う */
 export const plainOf = (p) => p.runs.map((r) => r.t).join("");
 
-/** 記法を外した本文（ほかのアプリ向け）。ruby: "paren" = 漢字（かんじ） / "base" = 漢字 / "aozora" = ｜漢字《かんじ》 */
-export function strip(body, ruby = "paren") {
-  return parse(body).map((p) => p.runs.map((r) => {
+/** 記法を外した本文（ほかのアプリ向け）。ruby: "paren" = 漢字（かんじ） / "base" = 漢字 / "aozora" = ｜漢字《かんじ》
+ *  terms を渡すと、用語集のルビも付ける（組版と同じ決まり） */
+export function strip(body, ruby = "paren", terms = [], rubyOnce = false) {
+  return applyTerms(parse(body), terms, rubyOnce).map((p) => p.runs.map((r) => {
     if (!r.r || ruby === "base") return r.t;
     return ruby === "aozora" ? `｜${r.t}《${r.r}》` : `${r.t}（${r.r}）`;
   }).join("")).join("\n");
+}
+
+// ---------- 作品の用語集 ----------
+// term: { base: 表記, reading: 読み, rule: "always"（毎回）| "first"（その文書で初めの 1 回）| "none", part: 語の一部でも付けるか }
+const scriptOf = (c) => (KANJI.test(c) ? "k" : /[\u30a0-\u30ff\u31f0-\u31ff\uff66-\uff9f]/u.test(c) ? "t" : /[A-Za-z0-9\uff10-\uff19\uff21-\uff3a\uff41-\uff5a]/u.test(c) ? "l" : "");
+
+/** 表記の最初の字で引ける表（長い表記を先に試す） */
+export function termIndex(terms) {
+  const idx = new Map();
+  for (const t of terms || []) {
+    if (!t?.base) continue;
+    const c = Array.from(t.base)[0];
+    if (!idx.has(c)) idx.set(c, []);
+    idx.get(c).push({ ...t, chars: Array.from(t.base) });
+  }
+  for (const list of idx.values()) list.sort((a, b) => b.chars.length - a.chars.length);
+  return idx;
+}
+
+/** chars[i] から始まる用語（語の境目を守る）。無ければ null */
+function matchAt(idx, chars, i) {
+  const list = idx.get(chars[i]);
+  if (!list) return null;
+  for (const t of list) {
+    const n = t.chars.length;
+    let ok = i + n <= chars.length;
+    for (let k = 0; ok && k < n; k++) ok = chars[i + k] === t.chars[k];
+    if (!ok) continue;
+    if (!t.part) {                                   // 前後に同じ種類の字（漢字・カタカナ・英数字）が続くなら、語の一部なので付けない
+      const a = scriptOf(t.chars[0]), b = scriptOf(t.chars[n - 1]);
+      if (a && i > 0 && scriptOf(chars[i - 1]) === a) continue;
+      if (b && i + n < chars.length && scriptOf(chars[i + n]) === b) continue;
+    }
+    return t;
+  }
+  return null;
+}
+
+/** 段落の並びに、用語集のルビを付ける。rule が first の用語は、その文書で初めて出た所だけ。
+ *  本文に手で書いたルビが先。rubyOnce なら、手で書いた同じルビも 2 回目からは外す */
+export function applyTerms(paras, terms, rubyOnce = false) {
+  const idx = termIndex((terms || []).filter((t) => t.reading && t.rule !== "none"));
+  if (!idx.size && !rubyOnce) return paras;
+  const seen = new Set(), seenRuby = new Set();
+  return paras.map((p) => {
+    const runs = [];
+    for (const r of p.runs) {
+      if (r.r) {
+        seen.add(r.t);
+        const key = `${r.t}\u0000${r.r}`;
+        if (rubyOnce && seenRuby.has(key)) { runs.push({ t: r.t, b: r.b, i: r.i }); continue; }
+        seenRuby.add(key);
+        runs.push(r);
+        continue;
+      }
+      const chars = Array.from(r.t);
+      let buf = "";
+      for (let i = 0; i < chars.length;) {
+        const t = idx.size ? matchAt(idx, chars, i) : null;
+        if (!t) { buf += chars[i++]; continue; }
+        if (t.rule === "first" && seen.has(t.base)) { buf += t.base; i += t.chars.length; continue; }
+        seen.add(t.base);
+        if (buf) runs.push({ t: buf, b: r.b, i: r.i });
+        buf = "";
+        runs.push({ t: t.base, r: t.reading, b: r.b, i: r.i, auto: true });
+        i += t.chars.length;
+      }
+      if (buf) runs.push({ t: buf, b: r.b, i: r.i });
+    }
+    return { ...p, runs };
+  });
+}
+
+/** 本文に用語が何回出てくるか（表記 → 回数）。手で書いたルビの親文字も数える */
+export function termCounts(body, terms) {
+  const idx = termIndex(terms), out = new Map();
+  for (const p of parse(body)) for (const r of p.runs) {
+    const chars = Array.from(r.t);
+    for (let i = 0; i < chars.length;) {
+      const t = matchAt(idx, chars, i);
+      if (t) { out.set(t.base, (out.get(t.base) || 0) + 1); i += t.chars.length; } else i++;
+    }
+  }
+  return out;
 }
 
 /** 字数（空白・改行を除く。ルビの読みは数えない） */

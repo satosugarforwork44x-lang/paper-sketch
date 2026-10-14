@@ -2,7 +2,7 @@
 // ・ブラウザの折り返しに任せず、ここで 1 字ずつ位置を決める。画面・印刷・PDF が同じ結果になり、縦書きの原稿用紙も同じ仕組みで組める
 // ・字の幅は 全角 = 1 マス、半角 = 0.5 マス。禁則は「、。」のぶら下げと、行頭・行末の追い出し
 // ・DOM を使わない（node でもテストできる）。描くのは render.js
-import { parse, parseLine } from "./markup.js";
+import { applyTerms, parse, parseLine } from "./markup.js";
 
 export const PT = 25.4 / 72;              // 1pt = 0.3528mm
 const EPS = 1e-6;
@@ -169,12 +169,12 @@ function metaParas(doc, genko) {
   return { before, after };
 }
 
-/** 文書を組む。返り値: { g, pages: [{ lines: [...] }], paraPage: 段落ごとの最初のページ } */
-export function layout(doc, sizes) {
+/** 文書を組む（terms: 作品の用語集）。返り値: { g, pages: [{ lines: [...] }], paraPage: 段落ごとの最初のページ } */
+export function layout(doc, sizes, terms = []) {
   const g = geometry(doc, sizes);
   const snap = g.mode === "genko";
   const { before, after } = metaParas(doc, snap);
-  const body = parse(doc.body).map((p, k) => ({ ...p, para: k }));
+  const body = applyTerms(parse(doc.body), terms, doc.rubyOnce).map((p, k) => ({ ...p, para: k }));   // 用語集のルビもここで付ける
   const paras = [...before, ...body, ...after];
   const rows = [];                                     // 行（まだページに置いていない）
   for (const p of paras) {

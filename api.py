@@ -6,6 +6,8 @@
 ・書き出した .txt / .paper.json は、読み込むと元と同じ文書に戻る（txt は 1 行目に設定を入れる）
 ・紙の上に置く物（objects）: 絵（image）と図形（shape。中に文字を入れられる）。絵は「Paper Sketch\\_images」に中身の
   ハッシュの名前で写して置き、文書には名前だけを書く（同じ絵は 1 つ。書き出した文書を読み込んでも同じ絵を指す）
+・作品の用語集: 章ごとの文書が同じ作品（doc.work）を指し、用語（人名・地名・独自の読み）は「<作品名>.dict.json」に 1 つ。
+  ルビを付けるのは画面の組版（毎回 / 初出だけ / 付けない）。書き出した文書には用語集の写しを入れ、読み込むと作品の用語集へ足す
 """
 from __future__ import annotations
 
@@ -37,6 +39,11 @@ IMAGE_MAGIC = {".png": (b"\x89PNG\r\n\x1a\n",), ".jpg": (b"\xff\xd8\xff",), ".gi
                ".webp": (b"RIFF",), ".bmp": (b"BM",)}
 IMAGE_EXTS = {".png": ".png", ".jpg": ".jpg", ".jpeg": ".jpg", ".jfif": ".jpg", ".gif": ".gif", ".webp": ".webp", ".bmp": ".bmp"}
 IMAGE_NAME_RE = re.compile(r"^[0-9a-f]{20}\.(png|jpg|gif|webp|bmp)$")
+DICT_EXT = ".dict.json"
+DICT_FORMAT = "hub-paper-dict/1"
+TERM_KINDS = ("person", "place", "term", "reading")
+TERM_RULES = ("always", "first", "none")
+TERM_MAX = 2000
 SHAPES = ("rect", "round", "ellipse", "line", "arrow")
 OBJ_MAX = 300
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -155,6 +162,8 @@ def new_doc(template: str = DEFAULT_TEMPLATE) -> dict:
         "meta": meta,
         "theme": t["theme"],
         "ruby": True,
+        "rubyOnce": False,
+        "work": "",
         "objects": [],
         "body": "",
     }
@@ -232,6 +241,12 @@ def normalize(raw) -> tuple[dict, list[str]]:
         theme = out["theme"]
     out["theme"] = theme
     out["ruby"] = bool(raw.get("ruby", True))
+    out["rubyOnce"] = bool(raw.get("rubyOnce", False))
+    work = raw.get("work", "")
+    if work and not (isinstance(work, str) and NAME_RE.match(work) and work.strip() == work):
+        warn.append("work（作品の名前）が使えない名前なので外しました")
+        work = ""
+    out["work"] = work or ""
 
     out["objects"] = _objects(raw.get("objects"), warn)
 
@@ -302,7 +317,7 @@ def _dump(doc: dict) -> str:
 
 # ---------- txt（往復で同じ文書に戻る） ----------
 def to_txt(doc: dict) -> str:
-    """1 行目に本文以外の設定、2 行目から本文（記法のまま）。"""
+    """1 行目に本文以外の設定（作品の用語集の写しも）、2 行目から本文（記法のまま）。"""
     head = {k: v for k, v in doc.items() if k != "body"}
     return TXT_HEAD + json.dumps(head, ensure_ascii=False, separators=(",", ":")) + "\n" + doc["body"]
 
@@ -320,8 +335,9 @@ def escape_plain(text: str) -> str:
     return "\n".join(out)
 
 
-def from_txt(text: str) -> tuple[dict, list[str]]:
-    """txt を文書にする。1 行目に設定があれば元どおりに、無ければ本文だけのメモにする（記号はそのままの字として読む）。"""
+def from_txt(text: str, extra: dict | None = None) -> tuple[dict, list[str]]:
+    """txt を文書にする。1 行目に設定があれば元どおりに、無ければ本文だけのメモにする（記号はそのままの字として読む）。
+    extra を渡すと、1 行目にあった用語集の写しを extra["dictionary"] に入れる。"""
     text = text.lstrip("﻿").replace("\r\n", "\n").replace("\r", "\n")
     if text.startswith(TXT_HEAD):
         first, _, body = text.partition("\n")
@@ -330,6 +346,8 @@ def from_txt(text: str) -> tuple[dict, list[str]]:
         except json.JSONDecodeError:
             head = None
         if isinstance(head, dict):
+            if extra is not None:
+                extra["dictionary"] = head.get("dictionary")
             return normalize({**head, "body": body})
         return normalize({"body": escape_plain(text)})[0], ["1 行目の設定が読めないので、本文として読みました"]
     return normalize({"body": escape_plain(text)})
@@ -415,6 +433,122 @@ def _missing_images(doc: dict) -> list[str]:
     return sorted({o["src"] for o in doc.get("objects", []) if o["kind"] == "image" and not (d / o["src"]).is_file()})
 
 
+# ---------- 作品の用語集 ----------
+def _dict_path(work: str) -> Path:
+    return _folder() / f"{_check_name(work)}{DICT_EXT}"
+
+
+def normalize_terms(raw, warn: list[str] | None = None) -> list[dict]:
+    """用語の並びをそろえる。表記が同じものは 1 つにする（先の方を残す）。"""
+    warn = warn if warn is not None else []
+    out, seen = [], set()
+    for i, t in enumerate(raw if isinstance(raw, list) else []):
+        if not isinstance(t, dict):
+            continue
+        base = _str(t.get("base"), 40).replace("\n", "").strip()
+        reading = _str(t.get("reading"), 60).replace("\n", "").strip()
+        base = re.sub(r"[｜《》\\*]", "", base)
+        reading = re.sub(r"[｜《》\\*]", "", reading)
+        if not base or base in seen:
+            if base:
+                warn.append(f"用語「{base}」が 2 つあるので、後のほうを外しました")
+            continue
+        seen.add(base)
+        kind = t.get("kind") if t.get("kind") in TERM_KINDS else "term"
+        rule = t.get("rule") if t.get("rule") in TERM_RULES else ("always" if kind == "reading" else "first")
+        if not reading:
+            rule = "none"
+        out.append({"base": base, "reading": reading, "kind": kind, "rule": rule, "part": bool(t.get("part", False)),
+                    "note": _str(t.get("note"), 200)})
+        if len(out) >= TERM_MAX:
+            warn.append(f"用語が多すぎるので {TERM_MAX} 個までにしました")
+            break
+    return out
+
+
+def works() -> list[dict]:
+    f = _folder()
+    out = []
+    for p in sorted(f.glob(f"*{DICT_EXT}")):
+        try:
+            n = len(json.loads(p.read_text(encoding="utf-8")).get("terms") or [])
+        except (OSError, json.JSONDecodeError, AttributeError):
+            n = 0
+        out.append({"name": p.name[: -len(DICT_EXT)], "terms": n})
+    return out
+
+
+def get_dict(work: str) -> dict:
+    """作品の用語集。無ければ空（ファイルは作らない）。"""
+    p = _dict_path(work)
+    if not p.is_file():
+        return {"work": work, "terms": [], "mtime": None}
+    try:
+        raw = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise PaperError(f"{p.name} の JSON が壊れています（{e.lineno} 行目）")
+    terms = normalize_terms(raw.get("terms") if isinstance(raw, dict) else None)
+    return {"work": work, "terms": terms, "mtime": p.stat().st_mtime}
+
+
+def save_dict(work: str, terms: list) -> dict:
+    warn: list[str] = []
+    clean = normalize_terms(terms, warn)
+    p = _dict_path(work)
+    _write_atomic(p, json.dumps({"format": DICT_FORMAT, "work": work, "terms": clean}, ensure_ascii=False, indent=2) + "\n")
+    return {"work": work, "terms": clean, "mtime": p.stat().st_mtime, "warnings": warn}
+
+
+def create_work(work: str) -> dict:
+    work = _check_name(str(work).strip())
+    if _dict_path(work).exists():
+        raise PaperError(f"同じ名前の作品があります: {work}")
+    return save_dict(work, [])
+
+
+def rename_work(work: str, new_work: str) -> dict:
+    """作品の名前を変える。その作品を指している文書もまとめて書き換える。"""
+    src = _dict_path(work)
+    new_work = _check_name(str(new_work).strip())
+    dst = _dict_path(new_work)
+    if new_work == work:
+        return {"work": work, "docs": 0}
+    if dst.exists():
+        raise PaperError(f"同じ名前の作品があります: {new_work}")
+    if src.exists():
+        os.replace(src, dst)
+    n = 0
+    for p in _folder().glob(f"*{EXT}"):
+        try:
+            raw = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(raw, dict) and raw.get("work") == work:
+            raw["work"] = new_work
+            _write_atomic(p, _dump(raw))
+            n += 1
+    return {"work": new_work, "docs": n}
+
+
+def _merge_dict(work: str, terms: list) -> int:
+    """書き出しに入っていた用語を作品の用語集へ足す。すでにある表記は上書きしない。足した数を返す。"""
+    if not work or not isinstance(terms, list):
+        return 0
+    cur = get_dict(work)["terms"]
+    have = {t["base"] for t in cur}
+    add = [t for t in normalize_terms(terms) if t["base"] not in have]
+    if add or not _dict_path(work).exists():
+        save_dict(work, cur + add)
+    return len(add)
+
+
+def _with_dict(doc: dict) -> dict:
+    """書き出す形: 文書に、作品の用語集の写しを足す。"""
+    if not doc.get("work"):
+        return doc
+    return {**doc, "dictionary": get_dict(doc["work"])["terms"]}
+
+
 # ---------- 画面から呼ぶ ----------
 def _summary(p: Path) -> dict:
     name = p.name[: -len(EXT)]
@@ -432,7 +566,7 @@ def state() -> dict:
     f = _folder()
     files = sorted(f.glob(f"*{EXT}"), key=lambda p: p.stat().st_mtime, reverse=True)
     return {"folder": str(f), "files": [_summary(p) for p in files], "current": _ctx.store.get("paper", "current", None),
-            "templates": list(TEMPLATES.values()), "themes": THEMES, "sizes": SIZES}
+            "templates": list(TEMPLATES.values()), "themes": THEMES, "sizes": SIZES, "works": works()}
 
 
 def create(template: str = DEFAULT_TEMPLATE, name: str = "") -> dict:
@@ -461,7 +595,13 @@ def _read(name: str) -> tuple[Path, dict, list[str]]:
 def open_paper(name: str) -> dict:
     p, doc, warn = _read(name)
     _ctx.store.set("paper", "current", name)
-    return {"name": name, "doc": doc, "warnings": warn, "mtime": p.stat().st_mtime, "missing": _missing_images(doc)}
+    out = {"name": name, "doc": doc, "warnings": warn, "mtime": p.stat().st_mtime, "missing": _missing_images(doc), "dict": None}
+    if doc["work"]:
+        try:
+            out["dict"] = get_dict(doc["work"])
+        except PaperError as e:
+            out["warnings"].append(str(e))
+    return out
 
 
 def save_paper(name: str, doc: dict) -> dict:
@@ -471,9 +611,10 @@ def save_paper(name: str, doc: dict) -> dict:
     return {"mtime": p.stat().st_mtime, "warnings": warn}
 
 
-def poll(name: str) -> dict:
+def poll(name: str, work: str = "") -> dict:
     p = _path(name)
-    return {"mtime": p.stat().st_mtime if p.exists() else None}
+    d = _dict_path(work) if work else None
+    return {"mtime": p.stat().st_mtime if p.exists() else None, "dictMtime": d.stat().st_mtime if d and d.exists() else None}
 
 
 def rename(name: str, new_name: str) -> dict:
@@ -506,10 +647,13 @@ def import_files(paths: list[str]) -> dict:
                 if p.parent.resolve() == folder:
                     made.append(p.name[: -len(EXT)])       # もう置き場所にある → 開くだけ
                     continue
-                doc, warn = normalize(json.loads(p.read_text(encoding="utf-8")))
+                raw = json.loads(p.read_text(encoding="utf-8"))
+                doc, warn = normalize(raw)
+                extra = {"dictionary": raw.get("dictionary") if isinstance(raw, dict) else None}
                 stem = p.name[: -len(EXT)]
             elif p.suffix.lower() in TEXT_EXTS:
-                doc, warn = from_txt(_read_text_file(p))
+                extra = {}
+                doc, warn = from_txt(_read_text_file(p), extra)
                 stem = p.stem
             else:
                 skipped.append(p.name)
@@ -521,6 +665,8 @@ def import_files(paths: list[str]) -> dict:
         _write_atomic(_path(name), _dump(doc))
         made.append(name)
         warnings += [f"{p.name}: {w}" for w in warn]
+        if doc["work"] and extra.get("dictionary") is not None:
+            _merge_dict(doc["work"], extra["dictionary"])
         if _missing_images(doc):
             warnings.append(f"{p.name}: 見つからない絵があります（「{FOLDER_NAME}\\{IMAGE_DIR}」に無い）")
     if made:
@@ -535,9 +681,9 @@ def export(name: str, kind: str = "txt", text: str = "") -> dict:
     out_dir = _folder() / EXPORT_DIR
     out_dir.mkdir(exist_ok=True)
     if kind == "txt":
-        out, body, nl = _unique(out_dir / f"{name}.txt"), to_txt(doc), "\r\n"
+        out, body, nl = _unique(out_dir / f"{name}.txt"), to_txt(_with_dict(doc)), "\r\n"
     elif kind == "json":
-        out, body, nl = _unique(out_dir / f"{name}{EXT}"), _dump(doc), "\n"
+        out, body, nl = _unique(out_dir / f"{name}{EXT}"), _dump(_with_dict(doc)), "\n"
     elif kind == "plain":
         if not isinstance(text, str) or len(text) > BODY_MAX:
             raise PaperError("書き出す本文が正しくありません")

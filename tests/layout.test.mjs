@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parse, parseLine, strip, countChars, withAlign } from "../ui/markup.js";
+import { parse, parseLine, strip, countChars, withAlign, applyTerms, termCounts } from "../ui/markup.js";
 import { breakLines, layout, geometry } from "../ui/layout.js";
 import { hit, topmost } from "../ui/objects.js";
 
@@ -91,4 +91,26 @@ test("置いた物: 当たり判定（回転・線・前面と背面）", () => 
   const back = { ...box, id: "b", behind: true }, front = { ...box, id: "f" };
   assert.equal(topmost([front, back], 15, 15).id, "f");   // 背面より前面
   assert.equal(topmost([back, { ...front, id: "g" }, { ...front, id: "h" }], 15, 15).id, "h");   // 後から置いた物が手前
+});
+
+test("用語集: 初出だけ・毎回・付けない、語の境目、手書きのルビが先", () => {
+  const terms = [
+    { base: "東雲", reading: "しののめ", rule: "first" },
+    { base: "本気", reading: "マジ", rule: "always" },
+    { base: "真", reading: "まこと", rule: "first" },
+    { base: "アリス", reading: "Alice", rule: "always" },
+    { base: "蒼", reading: "あお", rule: "none" },
+  ];
+  const ruby = (body, once = false) => applyTerms(parse(body), terms, once).flatMap((p) => p.runs.filter((r) => r.r).map((r) => `${r.t}:${r.r}`));
+  assert.deepEqual(ruby("東雲が来た。東雲は笑った。\n東雲。"), ["東雲:しののめ"]);              // 初出だけ（段落をまたいでも）
+  assert.deepEqual(ruby("本気だ。本気だぞ。"), ["本気:マジ", "本気:マジ"]);                   // 毎回
+  assert.deepEqual(ruby("真実を知った真が"), ["真:まこと"]);                                // 「真実」の真には付けない
+  assert.deepEqual(ruby("アリスとアリストテレス"), ["アリス:Alice"]);                        // カタカナの続き
+  assert.deepEqual(ruby("蒼い空"), []);                                                      // 付けない
+  assert.deepEqual(ruby("｜東雲《あけぼの》と東雲"), ["東雲:あけぼの"]);                       // 手書きのルビが先、以後は初出済み
+  assert.deepEqual(ruby("｜宵《よい》と｜宵《よい》", true), ["宵:よい"]);                      // 手書きの同じルビも 2 回目から外す
+  assert.equal(strip("東雲が東雲を", "paren", terms), "東雲（しののめ）が東雲を");
+  assert.deepEqual([...termCounts("東雲と東雲、真実と真", terms)], [["東雲", 2], ["真", 1]]);
+  const r = layout(docOf("bunko", "東雲が来た。"), T.sizes, terms);
+  assert.ok(r.pages[0].lines[0].rubies.some((x) => x.r === "しののめ"));
 });
