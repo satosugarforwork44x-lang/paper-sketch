@@ -1,0 +1,128 @@
+{
+  "_": "ペーパースケッチの紙のひな形。新しく作るとき、ここの値を写して文書（.paper.json）にする。あとから変えても、作った文書には影響しない。寸法は mm、文字の大きさは pt。margin は [上, 右, 下, 左]",
+  "sizes": {
+    "A4": [210, 297],
+    "B5": [182, 257],
+    "A5": [148, 210],
+    "A6": [105, 148]
+  },
+  "themes": {
+    "white":     { "name": { "ja": "白",       "en": "White" },      "paper": "#ffffff", "line": "#c5cbd3", "ink": "#1b1b1b" },
+    "kinari":    { "name": { "ja": "生成り",   "en": "Ecru" },       "paper": "#fbf6ea", "line": "#d6c3a1", "ink": "#2b2520" },
+    "sakura":    { "name": { "ja": "桜",       "en": "Sakura" },     "paper": "#fff6f6", "line": "#eeb6c0", "ink": "#3a2a2e" },
+    "wakakusa":  { "name": { "ja": "若草",     "en": "Sprout" },     "paper": "#f6faee", "line": "#b5d197", "ink": "#25301f" },
+    "sora":      { "name": { "ja": "空",       "en": "Sky" },        "paper": "#f3f8fd", "line": "#a8c6e5", "ink": "#1e2a36" },
+    "shu":       { "name": { "ja": "朱の罫",   "en": "Vermilion" },  "paper": "#fffefa", "line": "#e0796b", "ink": "#1b1b1b" },
+    "houshoshi": { "name": { "ja": "奉書紙風", "en": "Hosho paper" }, "paper": "#fdfbf6", "line": "#e2dccd", "ink": "#111111", "texture": true }
+  },
+  "templates": [
+    {
+      "id": "memo", "group": "memo", "name": { "ja": "罫線メモ", "en": "Lined notes" },
+      "summary": { "ja": "横書きの罫線入りメモ帳", "en": "Lined note paper" },
+      "page": { "size": "A5", "landscape": false, "vertical": false, "margin": [14, 12, 14, 16], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "lines", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Gothic", "mode": "free", "size": 10.5, "lineHeight": 2.0, "letterSpacing": 0, "chars": 30, "lines": 25 },
+      "meta": { "placement": "top", "titleAlign": "start", "pageNumbers": true },
+      "theme": "white"
+    },
+    {
+      "id": "novel", "group": "memo", "name": { "ja": "小説（原稿）", "en": "Novel manuscript" },
+      "summary": { "ja": "A4 横・縦書き 40字×30行（新人賞の応募でよく使う形）", "en": "A4 landscape, vertical, 40 × 30" },
+      "page": { "size": "A4", "landscape": true, "vertical": true, "margin": [20, 20, 20, 20], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "none", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Mincho", "mode": "fit", "size": 11, "lineHeight": 1.8, "letterSpacing": 0, "chars": 40, "lines": 30 },
+      "meta": { "placement": "top", "titleAlign": "start", "pageNumbers": true },
+      "theme": "white"
+    },
+    {
+      "id": "diary", "group": "school", "name": { "ja": "絵日記", "en": "Picture diary" },
+      "summary": { "ja": "上に絵の枠、下にマス目（10字×9行）", "en": "A picture box over a writing grid" },
+      "page": { "size": "A4", "landscape": false, "vertical": true, "margin": [14, 14, 14, 14], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "genko", "chars": 10, "lines": 9, "guide": true, "picture": 0.45 },
+      "text": { "font": "UD Digi Kyokasho NK-R", "mode": "free", "size": 12, "lineHeight": 1.8, "letterSpacing": 0, "chars": 10, "lines": 9 },
+      "meta": { "placement": "grid", "titleAlign": "start", "pageNumbers": false },
+      "theme": "sora"
+    },
+    {
+      "id": "letter", "group": "letter", "name": { "ja": "便箋", "en": "Letter paper" },
+      "summary": { "ja": "手紙・お礼状。縦書き／横書き、色を選べる", "en": "Letters and thank-you notes" },
+      "page": { "size": "A5", "landscape": false, "vertical": true, "margin": [22, 14, 18, 14], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "lines", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Mincho", "mode": "free", "size": 12, "lineHeight": 2.2, "letterSpacing": 0.05, "chars": 20, "lines": 12 },
+      "meta": { "placement": "letter", "titleAlign": "start", "pageNumbers": false },
+      "theme": "kinari"
+    },
+    {
+      "id": "choji", "group": "letter", "name": { "ja": "弔辞", "en": "Memorial address" },
+      "summary": { "ja": "奉書紙風。縦書き、ゆったりした行間", "en": "Hosho-style paper, vertical" },
+      "page": { "size": "A4", "landscape": true, "vertical": true, "margin": [30, 28, 30, 28], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "none", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "HG正楷書体-PRO", "mode": "free", "size": 16, "lineHeight": 2.1, "letterSpacing": 0.08, "chars": 20, "lines": 12 },
+      "meta": { "placement": "letter", "titleAlign": "start", "pageNumbers": false, "title": "弔辞" },
+      "theme": "houshoshi"
+    },
+    {
+      "id": "sakubun120", "group": "school", "name": { "ja": "作文帳 120字", "en": "Composition 120" },
+      "summary": { "ja": "低・中学年向け。12字×10行、マスに十字の補助線", "en": "12 × 10 grid with guides (younger kids)" },
+      "page": { "size": "A5", "landscape": true, "vertical": true, "margin": [14, 12, 14, 12], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "genko", "chars": 12, "lines": 10, "guide": true, "picture": 0 },
+      "text": { "font": "UD Digi Kyokasho NK-R", "mode": "free", "size": 12, "lineHeight": 1.8, "letterSpacing": 0, "chars": 12, "lines": 10 },
+      "meta": { "placement": "grid", "titleAlign": "start", "pageNumbers": false },
+      "theme": "wakakusa"
+    },
+    {
+      "id": "sakubun162", "group": "school", "name": { "ja": "作文帳 162字", "en": "Composition 162" },
+      "summary": { "ja": "中・高学年向け。18字×9行", "en": "18 × 9 grid" },
+      "page": { "size": "A5", "landscape": false, "vertical": true, "margin": [14, 12, 14, 12], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "genko", "chars": 18, "lines": 9, "guide": false, "picture": 0 },
+      "text": { "font": "UD Digi Kyokasho NK-R", "mode": "free", "size": 12, "lineHeight": 1.8, "letterSpacing": 0, "chars": 18, "lines": 9 },
+      "meta": { "placement": "grid", "titleAlign": "start", "pageNumbers": false },
+      "theme": "wakakusa"
+    },
+    {
+      "id": "sakubun200", "group": "school", "name": { "ja": "作文帳 200字", "en": "Composition 200" },
+      "summary": { "ja": "中・高学年向け。20字×10行", "en": "20 × 10 grid" },
+      "page": { "size": "A5", "landscape": false, "vertical": true, "margin": [14, 12, 14, 12], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "genko", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "UD Digi Kyokasho NK-R", "mode": "free", "size": 12, "lineHeight": 1.8, "letterSpacing": 0, "chars": 20, "lines": 10 },
+      "meta": { "placement": "grid", "titleAlign": "start", "pageNumbers": false },
+      "theme": "wakakusa"
+    },
+    {
+      "id": "kansou", "group": "school", "name": { "ja": "感想文", "en": "Book report" },
+      "summary": { "ja": "A4 の 400字詰め（20字×20行）。題名・年月日・名前", "en": "A4, 400-character grid with title, date and name" },
+      "page": { "size": "A4", "landscape": true, "vertical": true, "margin": [15, 15, 15, 15], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "genko", "chars": 20, "lines": 20, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Mincho", "mode": "free", "size": 12, "lineHeight": 1.8, "letterSpacing": 0, "chars": 20, "lines": 20 },
+      "meta": { "placement": "grid", "titleAlign": "start", "pageNumbers": true },
+      "theme": "shu"
+    },
+    {
+      "id": "bunko", "group": "book", "name": { "ja": "文庫本（A6）", "en": "Pocket book (A6)" },
+      "summary": { "ja": "縦書き 38字×16行（1ページ 約600字）", "en": "Vertical, 38 × 16 (about 600 characters a page)" },
+      "page": { "size": "A6", "landscape": false, "vertical": true, "margin": [15, 10, 13, 12], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "none", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Mincho", "mode": "fit", "size": 9, "lineHeight": 1.7, "letterSpacing": 0, "chars": 38, "lines": 16 },
+      "meta": { "placement": "top", "titleAlign": "start", "pageNumbers": true },
+      "theme": "white"
+    },
+    {
+      "id": "book-a5", "group": "book", "name": { "ja": "A5 学術書・教科書", "en": "A5 textbook" },
+      "summary": { "ja": "横書き 36字×28行", "en": "Horizontal, 36 × 28" },
+      "page": { "size": "A5", "landscape": false, "vertical": false, "margin": [20, 16, 20, 18], "columns": 1, "columnGap": 8 },
+      "grid": { "kind": "none", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Mincho", "mode": "fit", "size": 9.5, "lineHeight": 1.75, "letterSpacing": 0, "chars": 36, "lines": 28 },
+      "meta": { "placement": "top", "titleAlign": "center", "pageNumbers": true },
+      "theme": "white"
+    },
+    {
+      "id": "magazine-a5", "group": "book", "name": { "ja": "A5 文芸誌・総合誌", "en": "A5 magazine" },
+      "summary": { "ja": "縦書き 2段組（25字×24行×2段）", "en": "Vertical, two tiers (25 × 24 × 2)" },
+      "page": { "size": "A5", "landscape": false, "vertical": true, "margin": [18, 15, 16, 15], "columns": 2, "columnGap": 8 },
+      "grid": { "kind": "none", "chars": 20, "lines": 10, "guide": false, "picture": 0 },
+      "text": { "font": "Yu Mincho", "mode": "fit", "size": 9, "lineHeight": 1.6, "letterSpacing": 0, "chars": 25, "lines": 24 },
+      "meta": { "placement": "top", "titleAlign": "start", "pageNumbers": true },
+      "theme": "white"
+    }
+  ]
+}
