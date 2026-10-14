@@ -156,3 +156,42 @@ export function blocksInRange(root, range) {
   const i = all.indexOf(a), j = all.indexOf(b);
   return i < 0 ? [] : all.slice(i, (j < i ? i : j) + 1);
 }
+
+// ---------- 打ちながらルビ: ｜親文字《読み》・漢字《読み》 と打つと、その場でルビの塊にする ----------
+const KANJI_RUN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff々〆ヶ〇]+$/u;
+
+/** 打ち込み欄の字の中にある青空文庫式のルビを、ルビの塊（.pe-ruby）に変える。only を渡すとその字の並びだけ。変えたら true */
+export function autoRuby(root, only = null) {
+  let changed = false;
+  const nodes = [];
+  if (only) { if (only.nodeType === 3 && root.contains(only) && only.data.includes("》") && !only.parentElement?.closest(".pe-ruby")) nodes.push(only); }
+  else {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (n.data.includes("》") && !n.parentElement?.closest(".pe-ruby")) nodes.push(n);
+  }
+  for (const n of nodes) {
+    let node = n;
+    for (;;) {
+      const t = node.data, close = t.indexOf("》");
+      if (close < 0) break;
+      const open = t.lastIndexOf("《", close);
+      if (open < 0) break;
+      const reading = cleanRuby(t.slice(open + 1, close));
+      let start, base;
+      const bar = t.lastIndexOf("｜", open);
+      if (bar >= 0 && bar < open - 1 && !t.slice(bar + 1, open).includes("》")) { start = bar; base = t.slice(bar + 1, open); }
+      else { const m = t.slice(0, open).match(KANJI_RUN); if (!m) break; start = open - m[0].length; base = m[0]; }
+      if (!reading || !cleanRuby(base)) break;
+      const after = node.splitText(close + 1);
+      node.splitText(start);
+      const mid = node.nextSibling;
+      const chip = rubyChip(cleanRuby(base), reading);
+      mid.replaceWith(chip);
+      changed = true;
+      const s = getSelection();
+      if (s && root.contains(after)) { const r = document.createRange(); r.setStart(after, 0); r.collapse(true); s.removeAllRanges(); s.addRange(r); }
+      node = after;
+    }
+  }
+  return changed;
+}

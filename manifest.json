@@ -1,7 +1,7 @@
 {
   "id": "paper",
   "name": "ペーパースケッチ",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "summary": "便箋・作文帳・文庫本などの紙に、縦書きでも横書きでも書いて印刷する。小説の作品ごとの用語集（ルビ・人名）。絵・図形・文字ボックス。AI で校正",
   "kind": "panel",
   "runtime": "python",
@@ -86,6 +86,26 @@
     {
       "fn": "rename_work",
       "summary": "作品の名前を変える（その作品の文書もまとめて）"
+    },
+    {
+      "fn": "versions",
+      "summary": "版の一覧"
+    },
+    {
+      "fn": "snapshot",
+      "summary": "今の文書を版として残す"
+    },
+    {
+      "fn": "version_doc",
+      "summary": "版の中身"
+    },
+    {
+      "fn": "restore_version",
+      "summary": "版に戻す（戻す前も版に残す）"
+    },
+    {
+      "fn": "delete_version",
+      "summary": "版を消す"
     }
   ],
   "locales": {

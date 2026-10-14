@@ -217,6 +217,44 @@ class PaperTest(unittest.TestCase):
         got = {t["base"]: t["reading"] for t in self.api.get_dict("作品C")["terms"]}
         self.assertEqual(got, {"東雲": "あずまぐも", "本気": "マジ"})
 
+    def test_versions_keep_restore_and_dedupe(self):
+        n = self.api.create("memo", "原稿")["name"]
+        d = self._doc(n); d["body"] = "一稿"; self.api.save_paper(n, d)
+        a = self.api.snapshot(n, "manual", "一稿")
+        self.assertTrue(self.api.snapshot(n, "auto")["skipped"])          # 同じ中身は残さない
+        d["body"] = "二稿（AI が直した）"
+        b = self.api.snapshot(n, "ai-before", doc=d)                     # 画面の中の文書を残す
+        self.assertFalse(b["skipped"])
+        self.api.save_paper(n, d)
+        vs = self.api.versions(n)
+        self.assertEqual([v["reason"] for v in vs], ["ai-before", "manual"])
+        self.assertEqual(vs[1]["label"], "一稿")
+        r = self.api.restore_version(n, a["id"])
+        self.assertEqual(r["doc"]["body"], "一稿")
+        # 戻す前の中身（二稿）は版に残っている（同じ中身の版がすでにあれば、新しくは作らない）
+        self.assertEqual(self.api.version_doc(n, self.api.versions(n)[0]["id"])["doc"]["body"], "二稿（AI が直した）")
+        d["body"] = "三稿"; self.api.save_paper(n, d)
+        self.api.restore_version(n, a["id"])
+        self.assertEqual(self.api.versions(n)[0]["reason"], "restore")
+        with self.assertRaises(self.api.PaperError):
+            self.api.version_doc(n, "../../x")
+        with self.assertRaises(self.api.PaperError):
+            self.api.snapshot(n, "hack")
+        self.api.rename(n, "原稿2")                                       # 名前を変えても版は付いてくる
+        self.assertEqual(len(self.api.versions("原稿2")), 3)
+
+    def test_auto_versions_are_pruned_but_manual_stay(self):
+        self.api.VERSION_AUTO_KEEP, self.api.VERSION_MAX = 3, 5
+        n = self.api.create("memo", "p")["name"]
+        d = self._doc(n)
+        for i in range(4):
+            d["body"] = f"m{i}"; self.api.snapshot(n, "manual", doc=d)
+        for i in range(6):
+            d["body"] = f"a{i}"; self.api.snapshot(n, "auto", doc=d)
+        vs = self.api.versions(n)
+        self.assertEqual(sum(v["reason"] == "manual" for v in vs), 4)
+        self.assertLessEqual(len(vs), 5)
+
 
 if __name__ == "__main__":
     unittest.main()

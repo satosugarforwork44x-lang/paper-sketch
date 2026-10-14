@@ -112,6 +112,12 @@ export function attachTerms(P) {
     await saveTerms(list);
   }
 
+  async function remove(t) {
+    if (!(await P.confirm(T.delAsk(t.base)))) return;
+    const d = P.getDict();
+    await saveTerms(d.terms.filter((x) => x.base !== t.base));
+  }
+
   function insert(t) {
     P.restoreRange();
     document.execCommand("insertText", false, t.base);
@@ -217,7 +223,12 @@ export function attachTerms(P) {
         e.innerHTML = P.icons.rename;
         e.title = T.edit;
         e.addEventListener("click", () => edit(t));
-        li.append(b, c, e);
+        const x = el("button", "icon-btn pp-ib pp-tedit pp-tdel");
+        x.innerHTML = P.icons.trash;
+        x.title = T.del;
+        x.setAttribute("aria-label", `${T.del}: ${t.base}`);
+        x.addEventListener("click", () => remove(t));
+        li.append(b, c, e, x);
         list.append(li);
       }
     }

@@ -7,14 +7,19 @@
     "A6": [105, 148]
   },
   "themes": {
-    "white":     { "name": { "ja": "白",       "en": "White" },      "paper": "#ffffff", "line": "#c5cbd3", "ink": "#1b1b1b" },
-    "kinari":    { "name": { "ja": "生成り",   "en": "Ecru" },       "paper": "#fbf6ea", "line": "#d6c3a1", "ink": "#2b2520" },
-    "sakura":    { "name": { "ja": "桜",       "en": "Sakura" },     "paper": "#fff6f6", "line": "#eeb6c0", "ink": "#3a2a2e" },
-    "wakakusa":  { "name": { "ja": "若草",     "en": "Sprout" },     "paper": "#f6faee", "line": "#b5d197", "ink": "#25301f" },
-    "sora":      { "name": { "ja": "空",       "en": "Sky" },        "paper": "#f3f8fd", "line": "#a8c6e5", "ink": "#1e2a36" },
-    "shu":       { "name": { "ja": "朱の罫",   "en": "Vermilion" },  "paper": "#fffefa", "line": "#e0796b", "ink": "#1b1b1b" },
-    "houshoshi": { "name": { "ja": "奉書紙風", "en": "Hosho paper" }, "paper": "#fdfbf6", "line": "#e2dccd", "ink": "#111111", "texture": true }
+    "white":     { "name": { "ja": "白",           "en": "White" },        "paper": "#ffffff", "line": "#c5cbd3", "ink": "#1b1b1b" },
+    "kinari":    { "name": { "ja": "生成り",       "en": "Ecru" },         "paper": "#fbf6ea", "line": "#d6c3a1", "ink": "#2b2520" },
+    "sakura":    { "name": { "ja": "薄桃（桜）",   "en": "Pale pink" },    "paper": "#fff2f3", "line": "#eeb6c0", "ink": "#3a2a2e" },
+    "kiiro":     { "name": { "ja": "薄黄",         "en": "Pale yellow" },  "paper": "#fffbe3", "line": "#e2cf86", "ink": "#2e2a1c" },
+    "koshi":     { "name": { "ja": "古紙",         "en": "Old paper" },    "paper": "#efe4cc", "line": "#c4ad84", "ink": "#33291d", "texture": true },
+    "wakakusa":  { "name": { "ja": "若草（薄緑）", "en": "Pale green" },   "paper": "#f3f9ea", "line": "#b5d197", "ink": "#25301f" },
+    "sora":      { "name": { "ja": "空（薄青）",   "en": "Pale blue" },    "paper": "#eef5fc", "line": "#a8c6e5", "ink": "#1e2a36" },
+    "fuji":      { "name": { "ja": "藤（薄紫）",   "en": "Pale lilac" },   "paper": "#f6f1fb", "line": "#c8b5df", "ink": "#2c2535" },
+    "nezumi":    { "name": { "ja": "薄鼠",         "en": "Pale gray" },    "paper": "#f2f2f0", "line": "#c4c4be", "ink": "#222222" },
+    "shu":       { "name": { "ja": "朱の罫",       "en": "Vermilion" },    "paper": "#fffefa", "line": "#e0796b", "ink": "#1b1b1b" },
+    "houshoshi": { "name": { "ja": "奉書紙風",     "en": "Hosho paper" },  "paper": "#fdfbf6", "line": "#e2dccd", "ink": "#111111", "texture": true }
   },
+
   "templates": [
     {
       "id": "memo", "group": "memo", "name": { "ja": "罫線メモ", "en": "Lined notes" },

@@ -114,3 +114,24 @@ test("用語集: 初出だけ・毎回・付けない、語の境目、手書き
   const r = layout(docOf("bunko", "東雲が来た。"), T.sizes, terms);
   assert.ok(r.pages[0].lines[0].rubies.some((x) => x.r === "しののめ"));
 });
+
+test("長いルビ: 親文字の間を広げる（マス目では広げない）", () => {
+  const r = layout(docOf("bunko", "｜嘘《フェイクニュース》だ。｜東京《とうきょう》"), T.sizes);
+  const line = r.pages[0].lines[0];
+  assert.equal(line.units[0].w, 4);                        // 8 字のルビ = 4 マス → 1 字の「嘘」を 4 マスに
+  assert.equal(line.pos[1], 4);                            // 次の字は広げた後ろから
+  assert.deepEqual(line.units.slice(3, 5).map((u) => u.w), [1.25, 1.25]);   // とうきょう（5 字 = 2.5 マス）を 2 字に割り振る
+  const g = layout(docOf("sakubun200", "｜嘘《フェイクニュース》"), T.sizes);
+  assert.equal(g.pages[0].lines[0].units[0].w, 1);
+});
+
+test("版の比べ方: 段落ごと、直した段落は字ごと", async () => {
+  const { diffBodies, diffStats } = await import("../ui/diff.js");
+  const rows = diffBodies("一行目\n吾輩は猫でる。\n消える段落\n最後", "一行目\n吾輩は猫である。\n最後\n足した段落");
+  assert.deepEqual(rows.map((r) => r.type), ["same", "chg", "del", "same", "add"]);
+  const chg = rows.find((r) => r.type === "chg" && r.old.startsWith("吾輩"));
+  assert.deepEqual(chg.parts, [{ op: "=", text: "吾輩は猫で" }, { op: "+", text: "あ" }, { op: "=", text: "る。" }]);
+  const st = diffStats(rows);
+  assert.equal(st.chg + st.add + st.del >= 2, true);
+  assert.deepEqual(diffStats(diffBodies("a\nb", "a\nb")), { chg: 0, add: 0, del: 0 });
+});

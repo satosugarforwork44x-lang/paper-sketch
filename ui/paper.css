@@ -49,6 +49,11 @@
 .pp-lab > span, .pp-num > span, .pp-field > span { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .pp-row .select { height: 28px; padding: 0 10px; width: auto; min-width: 96px; border-radius: var(--pill); font-size: 12.5px; }
 .pp-row .select.pp-font { min-width: 150px; }
+.pp-row .select.pp-theme { min-width: 130px; }
+.pp-row .select.pp-theme::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--swatch); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
+.pp-paper-color { display: flex; align-items: center; gap: 2px; }
+.pp-paper-color input { width: 26px; height: 24px; padding: 0; border: 1px solid var(--ink-4); border-radius: 6px; background: none; cursor: pointer; }
+.pp-paper-color .pp-ib { width: 22px; height: 22px; font-size: 13px; }
 .pp-seg { padding: 2px; }
 .pp-seg button { height: 24px; padding: 0 9px; font-size: 12px; }
 .pp-seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--text); box-shadow: var(--seg-on-shadow); }
@@ -162,12 +167,49 @@
 .pp-term .ct { min-width: 16px; font: 10.5px var(--font-num); color: var(--faint); text-align: right; }
 .pp-tedit { width: 24px; height: 24px; opacity: 0; }
 .pp-term:hover .pp-tedit, .pp-tedit:focus-visible { opacity: 1; }
+.pp-tdel:hover { color: var(--danger); }
 .pp-tedit .icon { width: 14px; height: 14px; }
 .pp-tnone { margin: 4px 2px; font-size: 11.5px; line-height: 1.6; color: var(--faint); }
 .pp-tdlg { gap: 10px; }
 .pp-tf { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; }
 .pp-tf > span { font-size: 12px; color: var(--muted); }
 .pp-tdlg .rnote { margin: -4px 0 0 92px; }
+
+/* 版（作品の保護） */
+.pp-dlg-box.pp-vbox { width: min(980px, 94vw); height: min(760px, 88vh); grid-template-rows: auto auto 1fr; }
+.pp-vhead { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
+.pp-vhead .note { grid-column: 1; }
+.pp-vhead .close { grid-row: 1 / span 2; grid-column: 2; font-size: 16px; }
+.pp-vkeep { display: flex; gap: 8px; }
+.pp-vkeep input { flex: 1; }
+.pp-vkeep .btn { height: 36px; }
+.pp-vbody { display: grid; grid-template-columns: 270px 1fr; gap: 12px; min-height: 0; }
+.pp-vlist { list-style: none; margin: 0; padding: 0 4px 0 0; overflow: auto; display: grid; gap: 2px; align-content: start; }
+.pp-vitem button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; padding: 7px 10px; border: 0; border-radius: var(--r-s);
+  background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.pp-vitem button:hover { background: var(--ink-2); }
+.pp-vitem button[aria-pressed="true"] { background: var(--tint); }
+.pp-vitem .t { font: 12px var(--font-num); font-variant-numeric: tabular-nums; }
+.pp-vitem .r { justify-self: end; font-size: 10.5px; padding: 1px 7px; border-radius: var(--pill); background: var(--ink-3); color: var(--muted); }
+.pp-vitem.r-manual .r { background: color-mix(in srgb, rgb(var(--c2-rgb)) 35%, transparent); color: var(--text); }
+.pp-vitem[class*="r-ai"] .r { background: color-mix(in srgb, rgb(var(--c3-rgb)) 35%, transparent); color: var(--text); }
+.pp-vitem .c { font-size: 11px; color: var(--faint); }
+.pp-vitem .l { grid-column: 1 / -1; font-size: 12px; color: var(--text); font-weight: 600; }
+.pp-vmain { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+.pp-vbar { display: flex; align-items: center; gap: 8px; }
+.pp-vbar .sp { flex: 1; }
+.pp-vbar .btn { height: 30px; padding: 0 14px; font-size: 12px; white-space: nowrap; flex: none; }
+.pp-vbar .seg { flex: none; }
+.pp-vstat { font-size: 11.5px; color: var(--muted); }
+.pp-vdiff { flex: 1; overflow: auto; padding: 10px 14px; border-radius: var(--r); background: var(--well); font-size: 14px; line-height: 1.9; }
+.pp-vdiff p { margin: 0 0 4px; padding: 2px 8px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+.pp-dsame { color: var(--muted); }
+.pp-dskip { color: var(--faint); font-size: 11.5px; text-align: center; }
+.pp-dadd { background: rgba(52, 199, 89, .14); box-shadow: inset 3px 0 0 #34c759; }
+.pp-ddel { background: rgba(240, 122, 106, .14); box-shadow: inset 3px 0 0 var(--danger); text-decoration: line-through; color: var(--muted); }
+.pp-dchg { background: var(--ink-2); box-shadow: inset 3px 0 0 var(--amber); }
+.pp-dchg ins { text-decoration: none; background: rgba(52, 199, 89, .3); border-radius: 3px; }
+.pp-dchg del { background: rgba(240, 122, 106, .3); border-radius: 3px; color: var(--muted); }
 
 /* 小さな入力窓 */
 .pp-dlg { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0, 0, 0, .35); }

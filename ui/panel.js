@@ -10,6 +10,7 @@ import { fontStack, renderPage } from "./render.js";
 import * as ed from "./editor.js";
 import { attachObjects } from "./objects.js";
 import { attachTerms } from "./terms.js";
+import { attachVersions } from "./versions.js";
 
 const EN = (document.documentElement.lang || navigator.language || "ja").startsWith("en");
 const L = EN ? {
@@ -18,7 +19,8 @@ const L = EN ? {
   groups: { memo: "Notes & manuscripts", letter: "Letters", school: "School", book: "Books" },
   home: "All papers", undo: "Undo (Ctrl+Z)", redo: "Redo (Ctrl+Y)", print: "Print / PDF (Ctrl+P)", ai: "Proofread with AI", more: "More",
   template: "Paper", size: "Size", portrait: "Portrait", landscape: "Landscape", tate: "Vertical", yoko: "Horizontal",
-  grid: "Lines", gridKinds: { none: "Plain", lines: "Ruled", genko: "Squares" }, theme: "Color",
+  grid: "Lines", gridKinds: { none: "Plain", lines: "Ruled", genko: "Squares" }, theme: "Paper color",
+  paperCustom: "Any paper color", paperReset: "Back to the paper's own color",
   layout: "Layout", margin: "Margins (mm)", mTop: "Top", mRight: "Right", mBottom: "Bottom", mLeft: "Left",
   columns: "Columns", colGap: "Gap", picture: "Picture box", pageNo: "Page numbers", guide: "Guide cross in squares",
   mode: "Set by", modeFree: "Font size", modeFit: "Characters × lines", chars: "chars", lines: "lines",
@@ -45,6 +47,12 @@ const L = EN ? {
     text: "Text", textPh: "Text in the shape (**bold**, ｜base《ruby》)", size: "Size", color: "Color", vertical: "Vertical",
     opacity: "Opacity", rot: "Angle", behind: "Behind text", forward: "Forward", backward: "Backward", forwardTip: "Bring forward", backwardTip: "Send backward",
     dup: "Duplicate", del: "Delete" },
+  versions: { button: "Versions (keep, compare, go back)", title: "Versions", note: "Kept automatically every 10 minutes while you write, when you open a paper, before and after AI changes, and before going back. Versions you keep by hand are never deleted automatically.",
+    labelPh: "Name this version (e.g. Draft 1, before sending to the editor)", keep: "Keep this version", del: "Delete", restore: "Go back to this version",
+    cmpNow: "Compare with now", cmpPrev: "Compare with the one before", now: "now", none: "(nothing)", empty: "No versions yet",
+    reasons: { manual: "Kept", auto: "Auto", open: "Opened", "ai-send": "Sent to AI", "ai-before": "Before AI", "ai-after": "After AI", outside: "Before outside change", "outside-after": "After outside change", restore: "Before going back" },
+    chars: (n) => `${n.toLocaleString()} chars`, stat: (s) => `${s.chg} changed · ${s.add} added · ${s.del} removed paragraphs`, same: "No differences in the text.",
+    skip: "… unchanged paragraphs …", sameAsLast: "Same as the last version (kept the name only if given)", restored: "Went back to the version (the one before is kept too)" },
   rubyOnce: "Same ruby only once", rubyOnceTip: "Hand-written ruby that repeats (same text and reading) is shown only the first time in this document",
   aiDict: (lines) => `\nThese names and readings are intentional — do not change them:\n${lines}`,
   terms: { title: "Glossary", noWork: "(no work)", newWorkItem: "+ New work…", newWork: "Name of the work (shared by its chapters)", renameWork: "Rename the work",
@@ -55,14 +63,15 @@ const L = EN ? {
     rules: { always: "Every time", first: "First only", none: "Never" }, ruleShort: { always: "every", first: "first", none: "" },
     ruleNote: { always: "Shown every time (unique readings such as 本気《マジ》).", first: "Shown the first time in each chapter (ordinary readings, names).", none: "No ruby. Kept for clicking into the text." },
     part: "Also inside longer words (e.g. 真 inside 真実)", note: "Note", all: "All", search: "Search", empty: "No terms yet. Select text and right-click → Add to glossary.",
-    noMatch: "Nothing matches", insertTip: "Click to insert at the cursor", countTip: "Times in this chapter", addSel: "Add to glossary" },
+    noMatch: "Nothing matches", delAsk: (b) => `Delete “${b}” from the glossary? (Text in the chapters stays as it is)`, insertTip: "Click to insert at the cursor", countTip: "Times in this chapter", addSel: "Add to glossary" },
 } : {
   title: "ペーパースケッチ", newDoc: "新しく作る", recent: "最近の文書", empty: "まだありません。上の紙から選んでください。",
   dropNote: ".txt や .paper.json をここに落とすと開けます", pick: "ファイルを開く…",
   groups: { memo: "メモ・原稿", letter: "手紙", school: "学校", book: "本" },
   home: "一覧に戻る", undo: "元に戻す（Ctrl+Z）", redo: "やり直す（Ctrl+Y）", print: "印刷・PDF（Ctrl+P）", ai: "AI で校正", more: "その他",
   template: "紙", size: "大きさ", portrait: "縦長", landscape: "横長", tate: "縦書き", yoko: "横書き",
-  grid: "罫", gridKinds: { none: "なし", lines: "罫線", genko: "マス目" }, theme: "色",
+  grid: "罫", gridKinds: { none: "なし", lines: "罫線", genko: "マス目" }, theme: "台紙",
+  paperCustom: "台紙の色を自由に選ぶ", paperReset: "台紙の色を元に戻す",
   layout: "レイアウト", margin: "余白（mm）", mTop: "上", mRight: "右", mBottom: "下", mLeft: "左",
   columns: "段組", colGap: "段の間", picture: "絵の枠", pageNo: "ページ番号", guide: "マスに十字の補助線",
   mode: "決め方", modeFree: "文字の大きさ", modeFit: "字数×行数", chars: "字", lines: "行",
@@ -89,6 +98,12 @@ const L = EN ? {
     text: "文字", textPh: "図形の中の文字（**太字**、｜漢字《かんじ》）", size: "大きさ", color: "文字色", vertical: "縦書き",
     opacity: "不透明度", rot: "角度", behind: "文字の後ろ", forward: "前へ", backward: "後ろへ", forwardTip: "1 つ手前へ", backwardTip: "1 つ奥へ",
     dup: "複製", del: "消す" },
+  versions: { button: "版（残す・比べる・戻す）", title: "版（作品の保護）", note: "書いている間は 10 分ごと、開いた時、AI の前後、外で書き換えられる前後、戻す前に自動で残します。手で残した版は自動では消えません。",
+    labelPh: "版の名前（例: 初稿、編集者に送る前）", keep: "今の版を残す", del: "消す", restore: "この版に戻す",
+    cmpNow: "今と比べる", cmpPrev: "1 つ前の版と比べる", now: "今", none: "（なし）", empty: "まだ版がありません",
+    reasons: { manual: "手で残した", auto: "自動", open: "開いた時", "ai-send": "AI に渡した時", "ai-before": "AI で直す前", "ai-after": "AI で直した後", outside: "外で書き換えられる前", "outside-after": "外で書き換えられた後", restore: "戻す前" },
+    chars: (n) => `${n.toLocaleString()} 字`, stat: (s) => `直した段落 ${s.chg} ・ 足した段落 ${s.add} ・ 消した段落 ${s.del}`, same: "本文に違いはありません",
+    skip: "…（同じ段落）…", sameAsLast: "直前の版と同じなので、新しくは残しませんでした", restored: "版に戻しました（戻す前の文書も版に残っています）" },
   rubyOnce: "同じルビは2回目から外す", rubyOnceTip: "手で書いたルビ（同じ字・同じ読み）を、この文書で初めの1回だけ出します",
   aiDict: (lines) => `\n次の名前と読みは意図したものです。直さないでください:\n${lines}`,
   terms: { title: "用語集", noWork: "（作品なし）", newWorkItem: "＋ 新しい作品…", newWork: "作品の名前（章ごとの文書で共有します）", renameWork: "作品の名前を変える",
@@ -99,7 +114,7 @@ const L = EN ? {
     rules: { always: "毎回", first: "初出だけ", none: "付けない" }, ruleShort: { always: "毎回", first: "初出", none: "" },
     ruleNote: { always: "出てくるたびに付けます（本気《マジ》のような独自の読み）", first: "章ごとに、初めて出てきた所だけに付けます（ふつうの読み・人名）", none: "ルビは付けません。クリックで入れるためだけに置きます" },
     part: "語の一部でも付ける（「真実」の中の「真」にも付ける）", note: "メモ", all: "すべて", search: "さがす", empty: "まだありません。本文で字を選んで右クリック →「用語集に入れる」",
-    noMatch: "見つかりません", insertTip: "クリックでカーソルの位置に入れる", countTip: "この章に出てくる回数", addSel: "用語集に入れる" },
+    noMatch: "見つかりません", delAsk: (b) => `「${b}」を用語集から消しますか？（本文の字はそのまま残ります）`, insertTip: "クリックでカーソルの位置に入れる", countTip: "この章に出てくる回数", addSel: "用語集に入れる" },
 };
 
 const svg = (d) => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -117,6 +132,7 @@ const IC = {
   italic: svg('<path d="M10 5h8M6 19h8M14 5l-4 14"/>'),
   ruby: svg('<path d="M5 20l3.5-9 3.5 9M6.3 17h4.4"/><path d="M14 20v-6a2.5 2.5 0 0 1 5 0v6M14 17h5"/><path d="M7 5.5h10" stroke-width="1.4"/>'),
   layout: svg('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>'),
+  history: svg('<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 2"/>'),
   image: icons.image || svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 3 3 3-3 5 5"/>'),
   textbox: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke-dasharray="2.5 2"/><path d="M8.5 9h7M12 9v7"/>'),
   rect: svg('<rect x="4" y="6" width="16" height="12" rx="1"/>'), round: svg('<rect x="4" y="6" width="16" height="12" rx="4"/>'),
@@ -189,9 +205,10 @@ export async function mount(el, ctx) {
   const undoBtn = ctx.addTool(IC.undo, L.undo, () => doUndo());
   const redoBtn = ctx.addTool(IC.redo, L.redo, () => doRedo());
   const printBtn = ctx.addTool(IC.print, L.print, () => print());
+  const histBtn = ctx.addTool(IC.history, L.versions.button, () => vers.open());
   const aiBtn = ctx.addTool(IC.ai, L.ai, () => aiMenu());
   const moreBtn = ctx.addTool(IC.more, L.more, () => moreMenu());
-  const editOnly = [backBtn, undoBtn, redoBtn, printBtn, aiBtn, moreBtn];
+  const editOnly = [backBtn, undoBtn, redoBtn, printBtn, histBtn, aiBtn, moreBtn];
 
   const T = (id) => st.templates.find((t) => t.id === id);
   const tname = (t) => (EN ? t.name.en : t.name.ja);
@@ -300,7 +317,7 @@ export async function mount(el, ctx) {
       const pos = quiet ? ed.caret(editor) : null;
       fillEditor();
       if (pos) ed.setCaret(editor, pos);
-      if (!quiet) { view.scrollTop = 0; editor.focus(); ed.setCaret(editor, { p: 1e9, o: 1e9 }); }
+      if (!quiet) { view.scrollTop = 0; editor.focus(); ed.setCaret(editor, { p: 1e9, o: 1e9 }); vers.snap("open"); lastAuto = { at: Date.now(), body: doc.body }; }
     } catch (e) { ctx.toast(e.message, "error"); await refresh(); showHome(); }
   }
 
@@ -323,7 +340,13 @@ export async function mount(el, ctx) {
     if (!name || saving || dirty || document.hidden) return;
     try {
       const r = await ctx.call("poll", { name, work: doc?.work || "" });
-      if (r.mtime && mtime && r.mtime !== mtime && !dirty && !saving) { await open(name, true); ctx.toast(L.reloaded); return; }
+      if (r.mtime && mtime && r.mtime !== mtime && !dirty && !saving) {
+        await vers.snap("outside", "", doc);              // 外（Claude など）で書き換えられる前の、画面の中の文書を残す
+        await open(name, true);
+        await vers.snap("outside-after");
+        ctx.toast(L.reloaded);
+        return;
+      }
       if (doc?.work && r.dictMtime && r.dictMtime !== dict?.mtime) { await loadDict(); ctx.toast(L.reloaded); }   // 用語集が外で書き換えられた
     } catch { /* 次の回にまた見る */ }
   }, 2000);
@@ -457,9 +480,22 @@ export async function mount(el, ctx) {
     const dir = seg([{ value: "v", label: L.tate }, { value: "h", label: L.yoko }], V ? "v" : "h", (v) => setDoc((d) => { d.page.vertical = v === "v"; }));
     const gridSel = selectBox({ options: Object.entries(L.gridKinds).map(([value, label]) => ({ value, label })), value: doc.grid.kind,
       onChange: (v) => setDoc((d) => { d.grid.kind = v; }) });
-    const themeSel = selectBox({ options: Object.keys(st.themes).map((k) => ({ value: k, label: themeName(k) })), value: doc.theme,
-      onChange: (v) => setDoc((d) => { d.theme = v; }) });
-    paper.replaceChildren(labeled(L.template, tSel), sizeSeg, orient, dir, labeled(L.grid, gridSel), labeled(L.theme, themeSel), layoutDetails());
+    const themeSel = selectBox({ options: Object.keys(st.themes).map((k) => ({ value: k, label: `${themeName(k)}` })), value: doc.theme,
+      onChange: (v) => setDoc((d) => { d.theme = v; d.paper = ""; }) });
+    themeSel.style.setProperty("--swatch", doc.paper || st.themes[doc.theme].paper);
+    themeSel.classList.add("pp-theme");
+    // 台紙: 色の見本付きの一覧 ＋ 自由な色
+    const custom = document.createElement("label");
+    custom.className = "pp-paper-color";
+    custom.title = L.paperCustom;
+    custom.innerHTML = `<input type="color"><button type="button" class="icon-btn pp-ib" hidden>×</button>`;
+    const ci = custom.querySelector("input"), cx = custom.querySelector("button");
+    ci.value = doc.paper || st.themes[doc.theme].paper;
+    cx.hidden = !doc.paper;
+    cx.title = L.paperReset;
+    ci.addEventListener("change", () => setDoc((d) => { d.paper = ci.value; }));
+    cx.addEventListener("click", (e) => { e.preventDefault(); setDoc((d) => { d.paper = ""; }); });
+    paper.replaceChildren(labeled(L.template, tSel), sizeSeg, orient, dir, labeled(L.grid, gridSel), labeled(L.theme, themeSel), custom, layoutDetails());
 
     // 2 段目: 文字
     const fonts = FONTS.filter(([f]) => f === doc.text.font || fontOK(f));
@@ -584,11 +620,16 @@ export async function mount(el, ctx) {
     doc.body = body;
     changed();
   }
-  editor.addEventListener("input", () => fromEditor("type"));
+  let pasting = false;
+  editor.addEventListener("input", (e) => {
+    // ｜漢字《かんじ》・漢字《かんじ》と打ったら、その場でルビにする（打っている所だけ。貼り付けは全体）
+    if (!e.isComposing) ed.autoRuby(editor, e.inputType === "insertFromPaste" || pasting ? null : getSelection()?.anchorNode);
+    fromEditor("type");
+  });
   editor.addEventListener("paste", (e) => {           // 書式の付いた貼り付けは、字だけにする
     e.preventDefault();
     const text = e.clipboardData?.getData("text/plain") || "";
-    if (text) document.execCommand("insertText", false, text.replace(/\r\n?/g, "\n"));
+    if (text) { pasting = true; document.execCommand("insertText", false, text.replace(/\r\n?/g, "\n")); pasting = false; }
   });
   editor.addEventListener("drop", (e) => { if (!e.dataTransfer?.types?.includes("text/plain")) e.preventDefault(); });
   editor.addEventListener("click", (e) => {
@@ -714,7 +755,7 @@ export async function mount(el, ctx) {
     if (!doc) return;
     laid = layout(doc, st.sizes, terms());
     const s = scale();
-    const gkey = JSON.stringify([doc.page, doc.grid, doc.text, doc.theme, doc.ruby, doc.rubyOnce, doc.work, dict?.mtime, doc.meta.pageNumbers, s, laid.pages.length]);
+    const gkey = JSON.stringify([doc.page, doc.grid, doc.text, doc.theme, doc.paper, doc.ruby, doc.rubyOnce, doc.work, dict?.mtime, doc.meta.pageNumbers, s, laid.pages.length]);
     const total = laid.pages.length;
     while (frames.length > total) { const f = frames.pop(); io.unobserve(f); f.remove(); }
     laid.pages.forEach((page, k) => {
@@ -845,15 +886,19 @@ export async function mount(el, ctx) {
   function aiMenu() {
     ctx.contextMenu([
       { label: L.aiCopy, onClick: async () => {
-        try { await navigator.clipboard.writeText(L.aiPrompt(doc.body) + (terms().length ? L.aiDict(terms().map((t) => `- ${t.base}${t.reading ? `（${t.reading}）` : ""}`).join("\n")) : "")); ctx.toast(L.aiCopied, "info", 6000); }
+        try { await flush(); await vers.snap("ai-send"); await navigator.clipboard.writeText(L.aiPrompt(doc.body) + (terms().length ? L.aiDict(terms().map((t) => `- ${t.base}${t.reading ? `（${t.reading}）` : ""}`).join("\n")) : "")); ctx.toast(L.aiCopied, "info", 6000); }
         catch (e) { ctx.toast(e.message, "error"); }
       } },
       { label: L.aiPaste, onClick: async () => {
         const v = await dialog({ title: L.aiPasteTitle, note: L.aiPasteNote, area: true });
         if (typeof v !== "string" || !v.trim()) return;
         const body = v.replace(/\r\n?/g, "\n").replace(/^---\n/, "").replace(/\n+$/, "");
+        await flush();
+        await vers.snap("ai-before");
         setDoc((d) => { d.body = body; }, false);
         editor.innerHTML = ed.toHtml(doc.body);
+        await flush();
+        await vers.snap("ai-after");
       } },
     ], ...at(aiBtn));
   }
@@ -889,13 +934,24 @@ export async function mount(el, ctx) {
     termsUI.render();
     relayout();
   }
-  const termsUI = attachTerms({ ctx, L, aside: $(".pp-terms"), editor, store, icons: { ...icons, plus: icons.plus || IC.ruby, rename: icons.rename || IC.layout },
+  const termsUI = attachTerms({ ctx, L, aside: $(".pp-terms"), editor, store, icons: { ...icons, plus: icons.plus || IC.ruby, rename: icons.rename || IC.layout, trash: icons.trash || "×" },
     getDoc: () => doc, getDict: () => dict, works: () => st.works || [],
     setDict: (d) => { dict = d; termsUI.render(); relayout(); },
     setWork: async (w) => { setDoc((d) => { d.work = w; }, false); await flush(); await refresh(); await loadDict(); },
     afterRenameWork: async (w) => { doc.work = w; await refresh(); await loadDict(); },
     prompt: (title, value) => dialog({ title, value, input: true }),
+    confirm: async (title) => (await dialog({ title })) === true,
     restoreRange, rubyDialog: () => rubyDialog() });
+
+  // ---------- 版（作品の保護） ----------
+  let lastAuto = { at: 0, body: null };
+  const vers = attachVersions({ ctx, L, getName: () => name, getDoc: () => doc, flush, reload: () => open(name, true) });
+  setInterval(async () => {                              // 書いている間は 10 分ごとに自動で残す（変わっていなければ残さない）
+    if (!doc || document.hidden || Date.now() - lastAuto.at < 10 * 60 * 1000 || lastAuto.body === doc.body) return;
+    lastAuto = { at: Date.now(), body: doc.body };
+    await flush();
+    vers.snap("auto");
+  }, 60 * 1000);
 
   // ---------- 始める ----------
   for (const b of editOnly) b.style.display = "none";

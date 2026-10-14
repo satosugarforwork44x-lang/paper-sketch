@@ -8,6 +8,8 @@
   ハッシュの名前で写して置き、文書には名前だけを書く（同じ絵は 1 つ。書き出した文書を読み込んでも同じ絵を指す）
 ・作品の用語集: 章ごとの文書が同じ作品（doc.work）を指し、用語（人名・地名・独自の読み）は「<作品名>.dict.json」に 1 つ。
   ルビを付けるのは画面の組版（毎回 / 初出だけ / 付けない）。書き出した文書には用語集の写しを入れ、読み込むと作品の用語集へ足す
+・版（作品の保護）: 「Paper Sketch\\_versions\\<名前>」に、その時の文書を丸ごと 1 ファイルずつ残す（手で残す・自動・AI の前後・
+  外で書き換えられる前・戻す前）。直前の版と同じ中身なら残さない。手で残した版は自動では消さない
 """
 from __future__ import annotations
 
@@ -17,6 +19,7 @@ import os
 import shutil
 import re
 import tempfile
+import time
 from datetime import date
 from pathlib import Path
 
@@ -44,6 +47,11 @@ DICT_FORMAT = "hub-paper-dict/1"
 TERM_KINDS = ("person", "place", "term", "reading")
 TERM_RULES = ("always", "first", "none")
 TERM_MAX = 2000
+VERSION_DIR = "_versions"
+VERSION_MAX = 200                    # 1 つの文書に残す版の数（手で残した版は数に入れても消さない）
+VERSION_AUTO_KEEP = 60               # 自動の版はこれだけ残す
+VERSION_REASONS = ("manual", "auto", "open", "ai-send", "ai-before", "ai-after", "outside", "outside-after", "restore")
+VERSION_ID_RE = re.compile(r"^\d{8}-\d{6}-\d{3}$")
 SHAPES = ("rect", "round", "ellipse", "line", "arrow")
 OBJ_MAX = 300
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -161,6 +169,7 @@ def new_doc(template: str = DEFAULT_TEMPLATE) -> dict:
         "text": dict(t["text"]),
         "meta": meta,
         "theme": t["theme"],
+        "paper": "",
         "ruby": True,
         "rubyOnce": False,
         "work": "",
@@ -240,6 +249,7 @@ def normalize(raw) -> tuple[dict, list[str]]:
         warn.append(f"theme「{theme}」は無いので {out['theme']} にしました")
         theme = out["theme"]
     out["theme"] = theme
+    out["paper"] = _color(raw.get("paper"), "")                  # 台紙の色を自由に（空ならテーマの色）
     out["ruby"] = bool(raw.get("ruby", True))
     out["rubyOnce"] = bool(raw.get("rubyOnce", False))
     work = raw.get("work", "")
@@ -549,6 +559,98 @@ def _with_dict(doc: dict) -> dict:
     return {**doc, "dictionary": get_dict(doc["work"])["terms"]}
 
 
+# ---------- 版（作品の保護） ----------
+def _vdir(name: str) -> Path:
+    return _folder() / VERSION_DIR / _check_name(name)
+
+
+def _vfile(name: str, vid: str) -> Path:
+    if not isinstance(vid, str) or not VERSION_ID_RE.match(vid):
+        raise PaperError("版の名前が正しくありません")
+    return _vdir(name) / f"{vid}.json"
+
+
+def _vmeta(p: Path) -> dict | None:
+    try:
+        v = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(v, dict):
+        return None
+    return {"id": p.stem, "time": v.get("time"), "reason": v.get("reason"), "label": v.get("label", ""),
+            "chars": v.get("chars", 0), "hash": v.get("hash", "")}
+
+
+def versions(name: str) -> list[dict]:
+    """版の一覧（新しい順）。"""
+    d = _vdir(name)
+    if not d.is_dir():
+        return []
+    out = [m for p in sorted(d.glob("*.json"), reverse=True) if VERSION_ID_RE.match(p.stem) and (m := _vmeta(p))]
+    return out
+
+
+def snapshot(name: str, reason: str = "manual", label: str = "", doc: dict | None = None) -> dict:
+    """今の文書（doc を渡せばそれ）を版として残す。直前の版と同じ中身なら残さない（skipped）。"""
+    if reason not in VERSION_REASONS:
+        raise PaperError(f"版の理由が正しくありません: {reason}")
+    if doc is None:
+        _, doc, _ = _read(name)
+    else:
+        doc, _ = normalize(doc)
+    text = _dump(doc)
+    h = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+    have = versions(name)
+    if have and have[0]["hash"] == h and not label:
+        return {"skipped": True, **have[0]}
+    d = _vdir(name)
+    d.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    vid = time.strftime("%Y%m%d-%H%M%S", time.localtime(now)) + f"-{int(now * 1000) % 1000:03d}"
+    while (d / f"{vid}.json").exists():
+        n = int(vid[-3:]) + 1
+        vid = f"{vid[:-3]}{n % 1000:03d}"
+    rec = {"format": "hub-paper-version/1", "time": now, "reason": reason, "label": _str(label, 80), "chars": len(doc["body"]),
+           "hash": h, "doc": doc}
+    _write_atomic(d / f"{vid}.json", json.dumps(rec, ensure_ascii=False, indent=1) + "\n")
+    _prune_versions(name)
+    return {"skipped": False, **_vmeta(d / f"{vid}.json")}
+
+
+def _prune_versions(name: str) -> None:
+    vs = versions(name)
+    autos = [v for v in vs if v["reason"] in ("auto", "open")]
+    drop = autos[VERSION_AUTO_KEEP:]
+    rest = [v for v in vs if v not in drop]
+    if len(rest) > VERSION_MAX:
+        drop += [v for v in reversed(rest) if v["reason"] != "manual"][: len(rest) - VERSION_MAX]   # 古い順に
+    for v in drop:
+        (_vdir(name) / f"{v['id']}.json").unlink(missing_ok=True)
+
+
+def version_doc(name: str, vid: str) -> dict:
+    p = _vfile(name, vid)
+    if not p.is_file():
+        raise PaperError("その版はありません")
+    v = json.loads(p.read_text(encoding="utf-8"))
+    doc, warn = normalize(v.get("doc"))
+    return {**_vmeta(p), "doc": doc, "warnings": warn}
+
+
+def restore_version(name: str, vid: str) -> dict:
+    """版に戻す。戻す前の今の文書も版として残すので、戻したことも元に戻せる。"""
+    v = version_doc(name, vid)
+    snapshot(name, "restore")
+    _write_atomic(_path(name), _dump(v["doc"]))
+    return open_paper(name)
+
+
+def delete_version(name: str, vid: str) -> bool:
+    p = _vfile(name, vid)
+    p.unlink(missing_ok=True)
+    return True
+
+
 # ---------- 画面から呼ぶ ----------
 def _summary(p: Path) -> dict:
     name = p.name[: -len(EXT)]
@@ -628,6 +730,8 @@ def rename(name: str, new_name: str) -> dict:
     if dst.exists():
         raise PaperError(f"同じ名前があります: {new_name}")
     os.replace(src, dst)
+    if _vdir(name).is_dir() and not _vdir(new_name).exists():   # 版も一緒に
+        os.replace(_vdir(name), _vdir(new_name))
     if _ctx.store.get("paper", "current", None) == name:
         _ctx.store.set("paper", "current", new_name)
     return {"name": new_name}

@@ -68,7 +68,7 @@ export function objectHtml(o, opts) {
 
 /** 1 ページを描く。opts: { theme, ruby, pageNo, total, showNumber, objects, imageUrl } */
 export function renderPage(doc, g, page, opts) {
-  const th = opts.theme;
+  const th = doc.paper ? { ...opts.theme, paper: doc.paper } : opts.theme;   // 台紙の色を自由に選んだとき
   const el = document.createElement("div");
   el.className = "pp-page";
   el.style.cssText = `width:${mm(g.W)};height:${mm(g.H)};background-color:${th.paper};color:${th.ink};` +

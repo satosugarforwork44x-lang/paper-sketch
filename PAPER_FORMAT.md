@@ -54,10 +54,17 @@
 | `grid.picture` | 紙の上側の絵の枠の割合 0〜0.8（絵日記） |
 | `text.mode` | `free`（`size` pt・`lineHeight` 倍・`letterSpacing` em で決める）/ `fit`（`chars` 字 × `lines` 行が入るように決める） |
 | `meta.placement` | 題名・日付・署名の置き方。`top`（先頭）/ `letter`（題名は先頭、日付と署名は本文の後）/ `grid`（作文: 題名は 2 マス下げ、2 行目に名前） |
-| `theme` | `white` `kinari` `sakura` `wakakusa` `sora` `shu` `houshoshi` |
+| `theme` | 台紙: `white` `kinari`（生成り）`sakura`（薄桃）`kiiro`（薄黄）`koshi`（古紙）`wakakusa`（薄緑）`sora`（薄青）`fuji`（薄紫）`nezumi`（薄鼠）`shu`（朱の罫）`houshoshi`（奉書紙風） |
+| `paper` | 台紙の色を自由に（`#rrggbb`。`""` ならテーマの色） |
 | `ruby` | ルビを出すか |
 | `rubyOnce` | `true` なら、本文に手で書いた同じルビ（同じ字・同じ読み）は 2 回目から出さない |
 | `work` | 作品の名前（`""` なら無し）。同じ作品の章は用語集を共有する |
+
+## 版（作品の保護）
+
+画面は `Paper Sketch\_versions\<名前>\` に、その時の文書を丸ごと版として残します（手で残す・10 分ごと・開いた時・AI の前後・
+**外で書き換えられる前後**・戻す前）。Claude がこのファイルを書き換えても、書き換える前の文書は画面が版に残すので、
+利用者は「版」の窓で違いを見て、元に戻せます。版のファイルは書き換えないでください。
 
 ## 作品の用語集（`<作品名>.dict.json`）
 

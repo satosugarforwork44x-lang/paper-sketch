@@ -66,9 +66,16 @@ function unitsOf(runs, font, fixed) {
   const units = [], rubies = [];
   for (const r of runs) {
     const rid = r.r ? rubies.push({ r: r.r }) - 1 : -1;
+    const first = units.length;
     for (const c of Array.from(r.t)) {
       const w = !isHalf(c) ? 1 : fixed || !measure ? 0.5 : Math.max(0.15, Math.min(1, measure(c, font, r.b)));
       units.push({ c, w, b: r.b, i: r.i, rid });
+    }
+    // ルビが親文字より長いときは、親文字の間を広げる（1 字に長い読みでも、ルビが隣の字にかからない）。マス目では広げない
+    if (r.r && !fixed) {
+      const need = Array.from(r.r).reduce((s, c) => s + (isHalf(c) ? 0.25 : 0.5), 0);
+      const base = units.slice(first).reduce((s, u) => s + u.w, 0);
+      if (need > base + EPS) for (let k = first; k < units.length; k++) units[k].w *= need / base;
     }
   }
   return { units, rubies };
