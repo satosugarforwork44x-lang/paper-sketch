@@ -34,7 +34,8 @@
 .pp-file .mt { color: var(--faint); font-size: 11.5px; font-family: var(--font-num); }
 
 /* ---- 編集 ---- */
-.pp-edit { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.pp-edit { flex: 1; display: flex; min-height: 0; }
+.pp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .pp-view { flex: 1; min-height: 120px; overflow: auto; background: var(--dots), var(--well); outline: none; }
 .pp-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px 24px 30px; }
 .pp-frame { display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -43,14 +44,32 @@
 .pp-split { flex: none; height: 7px; margin-top: -3px; cursor: row-resize; position: relative; z-index: 1; }
 .pp-split::after { content: ""; position: absolute; left: 50%; top: 2px; width: 36px; height: 3px; margin-left: -18px; border-radius: 2px; background: var(--ink-4); }
 
-.pp-tools { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.pp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 30px; }
+/* 右の設定の欄 */
+.pp-side { flex: none; width: 288px; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: var(--solid-1, transparent); }
+.pp-edit.side-off .pp-side { display: none; }
+.pp-tabs { flex: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 6px 6px 0; border-bottom: 1px solid var(--line); }
+.pp-tabs button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 7px; border: 0; border-bottom: 2px solid transparent;
+  background: none; color: var(--muted); font: 10.5px var(--font); cursor: pointer; }
+.pp-tabs button .icon { width: 17px; height: 17px; }
+.pp-tabs button:hover { color: var(--text); }
+.pp-tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--signal); }
+.pp-sec { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 16px; }
+.pp-sec[hidden] { display: none; }
+.pp-r { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 8px; }
+.pp-rl { font-size: 11.5px; color: var(--muted); }
+.pp-rc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.pp-rc > .select { flex: 1; min-width: 0; }
+.pp-rc > .pp-seg { flex: 1; display: flex; }
+.pp-rc > .pp-seg button { flex: 1; padding: 0 4px; }
+.pp-grid2 { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px 6px; width: 100%; }
+.pp-grid2 .pp-num { display: contents; }
+.pp-grid2 .pp-num em { display: none; }
+.pp-sec .select { height: 28px; padding: 0 10px; border-radius: var(--pill); font-size: 12.5px; }
+.pp-sec .select.pp-theme::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--swatch); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
+/* 打ち込み欄の上の小さな帯 */
+.pp-fmt { flex: none; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--ink-2); }
 .pp-lab { display: flex; align-items: center; gap: 6px; }
 .pp-lab > span, .pp-num > span, .pp-field > span { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
-.pp-row .select { height: 28px; padding: 0 10px; width: auto; min-width: 96px; border-radius: var(--pill); font-size: 12.5px; }
-.pp-row .select.pp-font { min-width: 150px; }
-.pp-row .select.pp-theme { min-width: 130px; }
-.pp-row .select.pp-theme::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--swatch); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
 .pp-paper-color { display: flex; align-items: center; gap: 2px; }
 .pp-paper-color input { width: 26px; height: 24px; padding: 0; border: 1px solid var(--ink-4); border-radius: 6px; background: none; cursor: pointer; }
 .pp-paper-color .pp-ib { width: 22px; height: 22px; font-size: 13px; }
@@ -65,6 +84,7 @@
 .pp-ib[aria-pressed="true"] { background: var(--tint); color: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--signal) 55%, transparent); }
 .pp-ib:disabled { opacity: .35; }
 .pp-num { display: flex; align-items: center; gap: 5px; }
+.pp-num input { width: 68px; min-width: 68px; box-sizing: border-box; }
 .pp-num em { font-style: normal; font-size: 11.5px; color: var(--faint); }
 .pp-num input, .pp-field input, .pp-field textarea {
   height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-s); background: var(--ink-2); color: var(--text); font: 12.5px var(--font-num);
@@ -73,34 +93,21 @@
 .pp-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .pp-check input { accent-color: rgb(var(--c2-rgb)); }
 
-.pp-more { position: relative; }
-.pp-more summary {
-  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 9px; border-radius: var(--pill); background: var(--ink-2);
-  font-size: 12.5px; color: var(--text); cursor: pointer; list-style: none; user-select: none;
-}
-.pp-more summary::-webkit-details-marker { display: none; }
-.pp-more summary .icon { width: 16px; height: 16px; color: var(--muted); }
-.pp-more[open] summary { background: var(--tint); }
-.pp-pop {
-  position: absolute; z-index: 20; right: 0; bottom: calc(100% + 6px); display: grid; gap: 10px; padding: 12px 14px; width: max-content; max-width: 560px;
-  border-radius: var(--r); background: var(--solid-2); box-shadow: var(--shadow);
-}
-.pp-pop-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.pp-pop-row > b { font-size: 11.5px; font-weight: 600; color: var(--muted); }
-
-.pp-meta { gap: 6px 14px; }
+.pp-meta .pp-field { display: grid; grid-template-columns: 1fr auto; gap: 4px 6px; }
+.pp-meta .pp-field > span { grid-column: 1 / -1; }
+.pp-meta .pp-field input, .pp-meta .pp-field textarea { min-width: 0; font-family: var(--font); }
+.pp-meta .pp-field.title input, .pp-meta .pp-field.signature textarea { grid-column: 1 / -1; }
 .pp-field { display: flex; align-items: center; gap: 6px; }
-.pp-field.title input { width: 200px; }
-.pp-field.date input { width: 170px; }
-.pp-field.signature { flex: 1; min-width: 200px; }
-.pp-field textarea { flex: 1; resize: none; padding: 5px 8px; line-height: 1.4; font-family: var(--font); }
+.pp-field textarea { flex: 1; resize: vertical; padding: 5px 8px; line-height: 1.4; font-family: var(--font); }
 .pp-today { height: 26px; padding: 0 10px; font-size: 11.5px; }
 
 /* 挿入・置いた物の設定 */
-.pp-insert { gap: 2px 4px; }
+.pp-insert { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pp-objrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pp-objrow .pp-ofield { flex-basis: 100%; }
 .pp-ilab, .pp-otitle { font-size: 11.5px; color: var(--muted); margin-right: 6px; font-weight: 400; }
 .pp-otitle { font-weight: 600; color: var(--text); }
-.pp-ihint { margin-left: 10px; font-size: 11px; color: var(--faint); }
+.pp-ihint { flex-basis: 100%; margin: 4px 0 0; font-size: 11px; color: var(--faint); }
 .pp-objrow[hidden] { display: none; }
 .pp-objrow { padding: 6px 8px; border-radius: var(--r); background: var(--tint); }
 .pp-color { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
@@ -142,8 +149,8 @@
 .pe.hide-ruby .pe-ruby::before { opacity: .35; }
 
 /* 打ち込み欄と用語集 */
-.pp-write { flex: none; display: flex; min-height: 0; }
-.pp-terms { width: 250px; flex: none; display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 10px 10px 8px; border-left: 1px solid var(--line); overflow: hidden; }
+.pp-write { flex: none; display: flex; flex-direction: column; min-height: 0; }
+.pp-sec.pp-terms { gap: 8px; overflow: hidden; padding: 10px 10px 8px; }
 .pp-th { display: flex; align-items: center; gap: 6px; }
 .pp-th > b { font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .pp-th .select.pp-work { flex: 1; min-width: 0; height: 26px; padding: 0 10px; border-radius: var(--pill); font-size: 12px; }
@@ -250,3 +257,4 @@ img.pp-obj { object-fit: fill; transform-origin: center; }
   #pp-print .pp-page { break-after: page; zoom: 1 !important; }
   #pp-print .pp-page:last-child { break-after: auto; }
 }
+.pp-grid2 .pp-num input { width: 100%; min-width: 0; }

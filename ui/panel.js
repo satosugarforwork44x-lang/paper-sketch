@@ -53,6 +53,8 @@ const L = EN ? {
     reasons: { manual: "Kept", auto: "Auto", open: "Opened", "ai-send": "Sent to AI", "ai-before": "Before AI", "ai-after": "After AI", outside: "Before outside change", "outside-after": "After outside change", restore: "Before going back" },
     chars: (n) => `${n.toLocaleString()} chars`, stat: (s) => `${s.chg} changed · ${s.add} added · ${s.del} removed paragraphs`, same: "No differences in the text.",
     skip: "… unchanged paragraphs …", sameAsLast: "Same as the last version (kept the name only if given)", restored: "Went back to the version (the one before is kept too)" },
+  tabs: { paper: "Paper", text: "Text", meta: "Title", insert: "Insert", terms: "Glossary" }, sideToggle: "Show / hide the settings",
+  margins: "Margins", mmUnit: "mm", orient: "Orientation", dir: "Writing", perLine: "Per line", lineCount: "Lines", rubyRow: "Ruby",
   rubyOnce: "Same ruby only once", rubyOnceTip: "Hand-written ruby that repeats (same text and reading) is shown only the first time in this document",
   aiDict: (lines) => `\nThese names and readings are intentional — do not change them:\n${lines}`,
   terms: { title: "Glossary", noWork: "(no work)", newWorkItem: "+ New work…", newWork: "Name of the work (shared by its chapters)", renameWork: "Rename the work",
@@ -104,6 +106,8 @@ const L = EN ? {
     reasons: { manual: "手で残した", auto: "自動", open: "開いた時", "ai-send": "AI に渡した時", "ai-before": "AI で直す前", "ai-after": "AI で直した後", outside: "外で書き換えられる前", "outside-after": "外で書き換えられた後", restore: "戻す前" },
     chars: (n) => `${n.toLocaleString()} 字`, stat: (s) => `直した段落 ${s.chg} ・ 足した段落 ${s.add} ・ 消した段落 ${s.del}`, same: "本文に違いはありません",
     skip: "…（同じ段落）…", sameAsLast: "直前の版と同じなので、新しくは残しませんでした", restored: "版に戻しました（戻す前の文書も版に残っています）" },
+  tabs: { paper: "紙", text: "文字", meta: "題名", insert: "挿入", terms: "用語集" }, sideToggle: "設定の欄を出す・しまう",
+  margins: "余白", mmUnit: "mm", orient: "向き", dir: "書き方", perLine: "1行の字数", lineCount: "行数", rubyRow: "ルビ",
   rubyOnce: "同じルビは2回目から外す", rubyOnceTip: "手で書いたルビ（同じ字・同じ読み）を、この文書で初めの1回だけ出します",
   aiDict: (lines) => `\n次の名前と読みは意図したものです。直さないでください:\n${lines}`,
   terms: { title: "用語集", noWork: "（作品なし）", newWorkItem: "＋ 新しい作品…", newWork: "作品の名前（章ごとの文書で共有します）", renameWork: "作品の名前を変える",
@@ -132,6 +136,10 @@ const IC = {
   italic: svg('<path d="M10 5h8M6 19h8M14 5l-4 14"/>'),
   ruby: svg('<path d="M5 20l3.5-9 3.5 9M6.3 17h4.4"/><path d="M14 20v-6a2.5 2.5 0 0 1 5 0v6M14 17h5"/><path d="M7 5.5h10" stroke-width="1.4"/>'),
   layout: svg('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>'),
+  side: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15"/>'),
+  font: svg('<path d="M4 19 9.5 5h1L16 19M6.3 14h7.4"/><path d="M17 11.5h4M19 9.5v8"/>'),
+  sign: svg('<path d="M4 18c3-6 5-9 6.5-9 2 0-1.5 7 .5 7 1.3 0 2.5-3 4-3 1.2 0 .8 2 2 2h3"/><path d="M4 21h16"/>'),
+  book: svg('<path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/>'),
   history: svg('<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 2"/>'),
   image: icons.image || svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 3 3 3-3 5 5"/>'),
   textbox: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke-dasharray="2.5 2"/><path d="M8.5 9h7M12 9v7"/>'),
@@ -185,17 +193,54 @@ export async function mount(el, ctx) {
   let zoom = store.get("zoom", 1);
 
   el.innerHTML = `<div class="pp"><div class="pp-home" hidden></div><div class="pp-edit" hidden>
-    <div class="pp-view" tabindex="-1"><div class="pp-pages"></div></div>
-    <div class="pp-split" role="separator" aria-orientation="horizontal"></div>
-    <div class="pp-tools"><div class="pp-row pp-paper"></div><div class="pp-row pp-type"></div><div class="pp-row pp-meta"></div><div class="pp-row pp-insert"></div><div class="pp-row pp-objrow" hidden></div></div>
-    <div class="pp-write"><div class="pp-editor pe" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div><aside class="pp-terms"></aside></div>
+    <div class="pp-main">
+      <div class="pp-view" tabindex="-1"><div class="pp-pages"></div></div>
+      <div class="pp-split" role="separator" aria-orientation="horizontal"></div>
+      <div class="pp-write"><div class="pp-fmt"></div><div class="pp-editor pe" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div></div>
+    </div>
+    <aside class="pp-side">
+      <nav class="pp-tabs" role="tablist"></nav>
+      <section class="pp-sec pp-paper" data-tab="paper"></section>
+      <section class="pp-sec pp-type" data-tab="text"></section>
+      <section class="pp-sec pp-meta" data-tab="meta"></section>
+      <section class="pp-sec" data-tab="insert"><div class="pp-insert"></div><div class="pp-objrow" hidden></div></section>
+      <section class="pp-sec pp-terms" data-tab="terms"></section>
+    </aside>
   </div></div>`;
   const $ = (s) => el.querySelector(s);
   const home = $(".pp-home"), edit = $(".pp-edit"), view = $(".pp-view"), pagesEl = $(".pp-pages"), editor = $(".pp-editor");
   editor.dataset.ph = L.editorPh;
   const imageUrl = (src) => `/blob/paper/${encodeURIComponent(src)}?t=${encodeURIComponent(TOKEN)}`;
   const write = $(".pp-write");
-  write.style.height = `${store.get("editorH", 220)}px`;
+  write.style.height = `${store.get("editorH", 200)}px`;
+
+  // ---------- 右の設定の欄（タブ）。打ち込み欄と紙を広く使うため、設定はここにまとめる ----------
+  const TABS = [["paper", IC.layout], ["text", IC.font], ["meta", IC.sign], ["insert", IC.image], ["terms", IC.book]];
+  let tab = store.get("tab", "paper");
+  function showTab(t) {
+    tab = t;
+    store.set("tab", t);
+    edit.querySelectorAll(".pp-sec").forEach((x) => { x.hidden = x.dataset.tab !== t; });
+    edit.querySelectorAll(".pp-tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  }
+  for (const [t, icon] of TABS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.tab = t;
+    b.setAttribute("role", "tab");
+    b.innerHTML = `${icon}<span></span>`;
+    b.querySelector("span").textContent = L.tabs[t];
+    b.title = L.tabs[t];
+    b.addEventListener("click", () => { if (edit.classList.contains("side-off")) toggleSide(true); showTab(t); });
+    $(".pp-tabs").append(b);
+  }
+  function toggleSide(on = edit.classList.contains("side-off")) {
+    edit.classList.toggle("side-off", !on);
+    store.set("sideOff", !on);
+    sideBtn?.setAttribute("aria-pressed", String(on));
+  }
+  edit.classList.toggle("side-off", store.get("sideOff", false));
+  showTab(tab);
 
   // ---------- 見出しのボタン ----------
   const switcherSlot = document.createElement("span");
@@ -208,7 +253,9 @@ export async function mount(el, ctx) {
   const histBtn = ctx.addTool(IC.history, L.versions.button, () => vers.open());
   const aiBtn = ctx.addTool(IC.ai, L.ai, () => aiMenu());
   const moreBtn = ctx.addTool(IC.more, L.more, () => moreMenu());
-  const editOnly = [backBtn, undoBtn, redoBtn, printBtn, histBtn, aiBtn, moreBtn];
+  const sideBtn = ctx.addTool(IC.side, L.sideToggle, () => toggleSide());
+  sideBtn.setAttribute("aria-pressed", String(!edit.classList.contains("side-off")));
+  const editOnly = [backBtn, undoBtn, redoBtn, printBtn, histBtn, aiBtn, moreBtn, sideBtn];
 
   const T = (id) => st.templates.find((t) => t.id === id);
   const tname = (t) => (EN ? t.name.en : t.name.ja);
@@ -417,7 +464,7 @@ export async function mount(el, ctx) {
     box.set = (v) => box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(v))));
     return box;
   }
-  function num({ label, value, min, max, step, onChange, unit = "", width = 52 }) {
+  function num({ label, value, min, max, step, onChange, unit = "", title = "" }) {
     const w = document.createElement("label");
     w.className = "pp-num";
     w.innerHTML = `<span></span><input type="number"><em></em>`;
@@ -425,7 +472,7 @@ export async function mount(el, ctx) {
     w.querySelector("em").textContent = unit;
     const inp = w.querySelector("input");
     Object.assign(inp, { min, max, step, value });
-    inp.style.width = `${width}px`;
+    if (title) w.title = title;
     inp.addEventListener("change", () => {
       const v = Math.min(max, Math.max(min, parseFloat(inp.value)));
       if (Number.isFinite(v)) onChange(v); else inp.value = value;
@@ -464,11 +511,35 @@ export async function mount(el, ctx) {
   }
 
   let typeRefs = {};
+  /** 右の欄の 1 行（左に見出し、右に道具） */
+  function row(label, ...nodes) {
+    const w = document.createElement("div");
+    w.className = "pp-r";
+    const s = document.createElement("span");
+    s.className = "pp-rl";
+    s.textContent = label;
+    const c = document.createElement("div");
+    c.className = "pp-rc";
+    c.append(...nodes);
+    w.append(s, c);
+    return w;
+  }
+  function chk(label, get, set, tip = "") {
+    const w = document.createElement("label");
+    w.className = "pp-check";
+    if (tip) w.title = tip;
+    w.innerHTML = `<input type="checkbox"><span></span>`;
+    w.querySelector("span").textContent = label;
+    w.querySelector("input").checked = get();
+    w.querySelector("input").addEventListener("change", (e) => setDoc((x) => set(x, e.target.checked), false));
+    return w;
+  }
+
   function buildTools() {
     const paper = $(".pp-paper"), type = $(".pp-type"), meta = $(".pp-meta");
     const genko = doc.grid.kind === "genko", fit = !genko && doc.text.mode === "fit", V = doc.page.vertical;
 
-    // 1 段目: 紙
+    // 紙
     const tSel = selectBox({ options: st.templates.map((t) => ({ value: t.id, label: tname(t) })), value: doc.template,
       onChange: (v) => setDoc((d) => {             // 紙を変えても、本文・題名・日付・署名・ルビはそのまま
         const t = docFromTemplate(T(v));
@@ -484,8 +555,7 @@ export async function mount(el, ctx) {
       onChange: (v) => setDoc((d) => { d.theme = v; d.paper = ""; }) });
     themeSel.style.setProperty("--swatch", doc.paper || st.themes[doc.theme].paper);
     themeSel.classList.add("pp-theme");
-    // 台紙: 色の見本付きの一覧 ＋ 自由な色
-    const custom = document.createElement("label");
+    const custom = document.createElement("label");         // 台紙の自由な色
     custom.className = "pp-paper-color";
     custom.title = L.paperCustom;
     custom.innerHTML = `<input type="color"><button type="button" class="icon-btn pp-ib" hidden>×</button>`;
@@ -495,59 +565,62 @@ export async function mount(el, ctx) {
     cx.title = L.paperReset;
     ci.addEventListener("change", () => setDoc((d) => { d.paper = ci.value; }));
     cx.addEventListener("click", (e) => { e.preventDefault(); setDoc((d) => { d.paper = ""; }); });
-    paper.replaceChildren(labeled(L.template, tSel), sizeSeg, orient, dir, labeled(L.grid, gridSel), labeled(L.theme, themeSel), custom, layoutDetails());
+    const m = doc.page.margin;
+    const mk = (i, lab) => num({ label: lab, value: m[i], min: 0, max: 80, step: 1, onChange: (v) => setDoc((x) => { x.page.margin[i] = v; }, false) });
+    const margins = document.createElement("div");
+    margins.className = "pp-grid2";
+    margins.append(mk(0, L.mTop), mk(1, L.mRight), mk(2, L.mBottom), mk(3, L.mLeft));
+    const rows = [row(L.template, tSel), row(L.size, sizeSeg), row(L.orient, orient), row(L.dir, dir), row(L.grid, gridSel),
+      row(L.theme, themeSel, custom), row(L.margin, margins)];
+    if (!genko) rows.push(row(L.columns, seg([1, 2, 3].map((n) => ({ value: n, label: String(n) })), doc.page.columns, (v) => setDoc((x) => { x.page.columns = v; })),
+      num({ label: "", value: doc.page.columnGap, min: 2, max: 30, step: 1, unit: "mm", title: L.colGap, onChange: (v) => setDoc((x) => { x.page.columnGap = v; }, false) })));
+    rows.push(row(L.picture, num({ label: "", value: Math.round(doc.grid.picture * 100), min: 0, max: 80, step: 5, unit: "%", onChange: (v) => setDoc((x) => { x.grid.picture = v / 100; }, false) })));
+    const checks = [chk(L.pageNo, () => doc.meta.pageNumbers, (x, v) => { x.meta.pageNumbers = v; })];
+    if (genko) checks.push(chk(L.guide, () => doc.grid.guide, (x, v) => { x.grid.guide = v; }));
+    rows.push(row("", ...checks));
+    paper.replaceChildren(...rows);
 
-    // 2 段目: 文字
+    // 文字
     const fonts = FONTS.filter(([f]) => f === doc.text.font || fontOK(f));
     if (!fonts.some(([f]) => f === doc.text.font)) fonts.unshift([doc.text.font, doc.text.font]);
     const fontSel = selectBox({ options: fonts.map(([value, label]) => ({ value, label })), value: doc.text.font,
       onChange: (v) => setDoc((d) => { d.text.font = v; }) });
     fontSel.classList.add("pp-font");
-    const items = [labeled(L.font, fontSel)];
-    if (!genko) items.push(seg([{ value: "free", label: L.modeFree }, { value: "fit", label: L.modeFit }], doc.text.mode, (v) => setDoc((d) => { d.text.mode = v; })));
+    const items = [row(L.font, fontSel)];
+    if (!genko) items.push(row(L.mode, seg([{ value: "free", label: L.modeFree }, { value: "fit", label: L.modeFit }], doc.text.mode, (v) => setDoc((d) => { d.text.mode = v; }))));
     if (genko || fit) {
       const src = genko ? "grid" : "text";
-      items.push(num({ label: "", value: doc[src].chars, min: genko ? 4 : 5, max: genko ? 60 : 80, step: 1, unit: L.chars, width: 56, onChange: (v) => setDoc((d) => { d[src].chars = v; }, false) }),
-        num({ label: "×", value: doc[src].lines, min: genko ? 2 : 3, max: genko ? 60 : 80, step: 1, unit: L.lines, width: 56, onChange: (v) => setDoc((d) => { d[src].lines = v; }, false) }));
+      items.push(row(L.perLine, num({ label: "", value: doc[src].chars, min: genko ? 4 : 5, max: genko ? 60 : 80, step: 1, unit: L.chars, onChange: (v) => setDoc((d) => { d[src].chars = v; }, false) })),
+        row(L.lineCount, num({ label: "", value: doc[src].lines, min: genko ? 2 : 3, max: genko ? 60 : 80, step: 1, unit: L.lines, onChange: (v) => setDoc((d) => { d[src].lines = v; }, false) })));
+    } else {
+      items.push(row(L.fsize, num({ label: "", value: doc.text.size, min: 5, max: 72, step: 0.5, onChange: (v) => setDoc((d) => { d.text.size = v; }, false) })),
+        row(L.lh, num({ label: "", value: doc.text.lineHeight, min: 1, max: 4, step: 0.1, unit: "×", onChange: (v) => setDoc((d) => { d.text.lineHeight = v; }, false) })));
     }
-    if (!genko && !fit) items.push(num({ label: L.fsize, value: doc.text.size, min: 5, max: 72, step: 0.5, onChange: (v) => setDoc((d) => { d.text.size = v; }, false) }),
-      num({ label: L.lh, value: doc.text.lineHeight, min: 1, max: 4, step: 0.1, unit: "×", onChange: (v) => setDoc((d) => { d.text.lineHeight = v; }, false) }));
-    if (!genko) items.push(num({ label: L.ls, value: doc.text.letterSpacing, min: -0.2, max: 1, step: 0.05, unit: "em", width: 60, onChange: (v) => setDoc((d) => { d.text.letterSpacing = v; }, false) }));
+    if (!genko) items.push(row(L.ls, num({ label: "", value: doc.text.letterSpacing, min: -0.2, max: 1, step: 0.05, unit: "em", onChange: (v) => setDoc((d) => { d.text.letterSpacing = v; }, false) })));
+    items.push(row(L.rubyRow, chk(L.rubyShow, () => doc.ruby, (d, v) => { d.ruby = v; editor.classList.toggle("hide-ruby", !v); }),
+      chk(L.rubyOnce, () => doc.rubyOnce, (d, v) => { d.rubyOnce = v; }, L.rubyOnceTip)));
+    type.replaceChildren(...items);
+
+    // 打ち込み欄の上: 揃え・太字・斜体・ルビ
     const tips = V ? L.alignV : L.align;
     const alignSeg = seg(ALIGNS.map((a) => ({ value: a, icon: IC[(V ? "v" : "") + a], title: tips[a] })), "start", (a) => applyAlign(a), "pp-align");
     const bBtn = iconBtn(IC.bold, L.bold, () => format("bold"), false);
     const iBtn = iconBtn(IC.italic, V ? L.italicV : L.italic, () => format("italic"), false);
     iBtn.disabled = V;
     const rBtn = iconBtn(IC.ruby, L.ruby, () => rubyDialog());
-    const show = document.createElement("label");
-    show.className = "pp-check";
-    show.innerHTML = `<input type="checkbox"><span></span>`;
-    show.querySelector("span").textContent = L.rubyShow;
-    show.querySelector("input").checked = doc.ruby;
-    show.querySelector("input").addEventListener("change", (e) => setDoc((d) => { d.ruby = e.target.checked; editor.classList.toggle("hide-ruby", !d.ruby); }, false));
-    const once = document.createElement("label");
-    once.className = "pp-check";
-    once.title = L.rubyOnceTip;
-    once.innerHTML = `<input type="checkbox"><span></span>`;
-    once.querySelector("span").textContent = L.rubyOnce;
-    once.querySelector("input").checked = doc.rubyOnce;
-    once.querySelector("input").addEventListener("change", (e) => setDoc((d) => { d.rubyOnce = e.target.checked; }, false));
-    items.push(sep(), alignSeg, sep(), bBtn, iBtn, rBtn, show, once);
-    type.replaceChildren(...items);
+    $(".pp-fmt").replaceChildren(alignSeg, sep(), bBtn, iBtn, rBtn);
     typeRefs = { alignSeg, bBtn, iBtn };
 
-    // 3 段目: 題名・日付・署名
+    // 題名・日付・署名
     const field = (label, key, ph, multi = false) => {
       const w = document.createElement("label");
       w.className = `pp-field ${key}`;
-      w.innerHTML = `<span></span>${multi ? "<textarea rows=\"1\"></textarea>" : "<input type=\"text\">"}`;
+      w.innerHTML = `<span></span>${multi ? "<textarea rows=\"2\"></textarea>" : "<input type=\"text\">"}`;
       w.querySelector("span").textContent = label;
       const inp = w.querySelector("input, textarea");
       inp.value = doc.meta[key];
       inp.placeholder = ph;
-      const fit2 = () => { if (multi) { inp.style.height = "auto"; inp.style.height = `${Math.min(72, inp.scrollHeight)}px`; } };
-      inp.addEventListener("input", () => { snap("type"); doc.meta[key] = inp.value; changed(); fit2(); });
-      requestAnimationFrame(fit2);
+      inp.addEventListener("input", () => { snap("type"); doc.meta[key] = inp.value; changed(); });
       return w;
     };
     const dateF = field(L.metaDate, "date", L.datePh);
@@ -563,42 +636,6 @@ export async function mount(el, ctx) {
     dateF.append(todayBtn);
     meta.replaceChildren(field(L.metaTitle, "title", L.titlePh), dateF, field(L.metaSig, "signature", L.sigPh, true));
     syncFormat();
-  }
-
-  function layoutDetails() {
-    const d = document.createElement("details");
-    d.className = "pp-more";
-    d.open = store.get("layoutOpen", false);
-    d.addEventListener("toggle", () => store.set("layoutOpen", d.open));
-    d.innerHTML = `<summary>${IC.layout}<span></span></summary><div class="pp-pop"></div>`;
-    d.querySelector("summary span").textContent = L.layout;
-    const pop = d.querySelector(".pp-pop");
-    const m = doc.page.margin;
-    const mk = (i, lab) => num({ label: lab, value: m[i], min: 0, max: 80, step: 1, width: 44, onChange: (v) => setDoc((x) => { x.page.margin[i] = v; }, false) });
-    const row1 = document.createElement("div");
-    row1.className = "pp-pop-row";
-    const t1 = document.createElement("b"); t1.textContent = L.margin;
-    row1.append(t1, mk(0, L.mTop), mk(1, L.mRight), mk(2, L.mBottom), mk(3, L.mLeft));
-    const row2 = document.createElement("div");
-    row2.className = "pp-pop-row";
-    if (doc.grid.kind !== "genko") {
-      row2.append(labeled(L.columns, seg([1, 2, 3].map((n) => ({ value: n, label: String(n) })), doc.page.columns, (v) => setDoc((x) => { x.page.columns = v; }))),
-        num({ label: L.colGap, value: doc.page.columnGap, min: 2, max: 30, step: 1, unit: "mm", width: 44, onChange: (v) => setDoc((x) => { x.page.columnGap = v; }, false) }));
-    }
-    row2.append(num({ label: L.picture, value: Math.round(doc.grid.picture * 100), min: 0, max: 80, step: 5, unit: "%", width: 48, onChange: (v) => setDoc((x) => { x.grid.picture = v / 100; }, false) }));
-    const chk = (label, get, set) => {
-      const w = document.createElement("label");
-      w.className = "pp-check";
-      w.innerHTML = `<input type="checkbox"><span></span>`;
-      w.querySelector("span").textContent = label;
-      w.querySelector("input").checked = get();
-      w.querySelector("input").addEventListener("change", (e) => setDoc((x) => set(x, e.target.checked), false));
-      return w;
-    };
-    row2.append(chk(L.pageNo, () => doc.meta.pageNumbers, (x, v) => { x.meta.pageNumbers = v; }));
-    if (doc.grid.kind === "genko") row2.append(chk(L.guide, () => doc.grid.guide, (x, v) => { x.grid.guide = v; }));
-    pop.append(row1, row2);
-    return d;
   }
 
   function today(vertical) {
@@ -923,7 +960,8 @@ export async function mount(el, ctx) {
 
   // ---------- 紙の上に置く物 ----------
   const objs = attachObjects({ ctx, L, view, frames, getDoc: () => doc, getLaid: () => laid, snap, changed, repaint, imageUrl,
-    row: $(".pp-objrow"), insertRow: $(".pp-insert"), icons: IC });
+    row: $(".pp-objrow"), insertRow: $(".pp-insert"), icons: IC,
+    onSelect: () => { if (!edit.classList.contains("side-off")) showTab("insert"); } });
   document.addEventListener("paste", (e) => {                    // 絵の貼り付け（打ち込み欄にいても紙に置く）
     if (doc && !edit.hidden && !document.querySelector(".pp-dlg")) objs.handlePaste(e);
   }, true);

@@ -83,6 +83,7 @@ export function attachObjects(P) {
     sel = id;
     redrawSel();
     buildProps();
+    if (id) P.onSelect?.();
   }
   function deselect() { if (sel) select(null); }
 
@@ -280,7 +281,6 @@ export function attachObjects(P) {
     w.append(el("span", "", label));
     const inp = el("input");
     Object.assign(inp, { type: "number", min, max, step, value });
-    inp.style.width = "58px";
     inp.addEventListener("change", () => { const v = Math.min(max, Math.max(min, parseFloat(inp.value))); if (Number.isFinite(v)) onChange(v); });
     w.append(inp, el("em", "", unit));
     return w;

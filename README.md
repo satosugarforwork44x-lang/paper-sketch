@@ -9,7 +9,7 @@ Pick a paper — letter paper, a memorial address, a school composition grid, a 
 Ruby (furigana), alignment, bold, italic, line and letter spacing work the way they do in Word, and **pictures, shapes and text boxes** can be placed on the paper.
 For novelists there is a **per-work glossary** (characters, places, unique readings) that adds ruby every time or only at a term's first appearance in each chapter. Proofreading goes to AI (Claude, ChatGPT, Gemini), and **versions** let you compare before and after and go back.
 
-![Paper Sketch — letter paper with the page preview on top and the writing area below](docs/paper-sketch.png)
+![Paper Sketch — letter paper with the page preview on top, the writing area below and settings at the side](docs/paper-sketch.png)
 
 > License: [PolyForm Noncommercial 1.0.0](LICENSE) (free for personal and non-commercial use)
 
@@ -33,7 +33,7 @@ So Paper Sketch is just **pick a paper → write → print**.
 
 | Decision | Why |
 |---|---|
-| **Paper on top, typing below** | Typing directly on a vertical page makes the caret hard to follow. Type horizontally, see the result on paper |
+| **Paper on top, typing below, settings at the side** | Typing directly on a vertical page makes the caret hard to follow. Type horizontally, see the result on paper. Paper, text, title, insert and glossary settings sit in tabs on the right (hide them with the panel button) so the page and the writing area stay large |
 | **Own typesetting, one character at a time** | No browser line wrapping: characters are placed on the chars × lines / square grid, so preview, print and PDF are identical |
 | **Three levels of formatting** | Document (font, size, line and letter spacing) / paragraph (alignment) / character (bold, italic, ruby). No font changes mid-paragraph — that would make the file format as complex as Word's |
 | **In vertical writing, “left” becomes “top”** | Alignment icons and names switch with the writing direction. “Bottom” is exactly what a signature needs |
