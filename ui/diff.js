@@ -27,10 +27,13 @@ export function diffSeq(a, b, limit = 4_000_000) {
   return [...head, ...mid, ...tail];
 }
 
+/** 比べる単位: 英数字の単語・空白はまとめて 1 つ、それ以外（日本語など）は 1 字ずつ */
+const tokens = (s) => String(s).match(/[A-Za-z0-9'’]+|\s+|[\s\S]/gu) || [];
+
 /** 文字の違いを、続いた同じ種類ごとにまとめる: [{ op, text }] */
 export function diffChars(a, b) {
   const out = [];
-  for (const o of diffSeq(Array.from(a), Array.from(b), 1_000_000)) {
+  for (const o of diffSeq(tokens(a), tokens(b), 1_000_000)) {
     const t = o.op === "+" ? o.b : o.a;
     if (out.length && out.at(-1).op === o.op) out.at(-1).text += t; else out.push({ op: o.op, text: t });
   }

@@ -7,7 +7,7 @@ import { diffBodies, diffStats } from "./diff.js";
 export function attachVersions(P) {
   const V = P.L.versions;
   const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
-  const when = (t) => new Date(t * 1000).toLocaleString(undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const when = (t) => new Date(t * 1000).toLocaleString(document.documentElement.lang || undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   /** 版を残す（失敗しても書く作業は止めない） */
   async function snap(reason, label = "", doc = null) {

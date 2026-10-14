@@ -196,7 +196,8 @@
 .pp-vitem .c { font-size: 11px; color: var(--faint); }
 .pp-vitem .l { grid-column: 1 / -1; font-size: 12px; color: var(--text); font-weight: 600; }
 .pp-vmain { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
-.pp-vbar { display: flex; align-items: center; gap: 8px; }
+.pp-vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pp-vbar .pp-vstat { order: 9; flex-basis: 100%; }
 .pp-vbar .sp { flex: 1; }
 .pp-vbar .btn { height: 30px; padding: 0 14px; font-size: 12px; white-space: nowrap; flex: none; }
 .pp-vbar .seg { flex: none; }

@@ -49,7 +49,7 @@ const L = EN ? {
     dup: "Duplicate", del: "Delete" },
   versions: { button: "Versions (keep, compare, go back)", title: "Versions", note: "Kept automatically every 10 minutes while you write, when you open a paper, before and after AI changes, and before going back. Versions you keep by hand are never deleted automatically.",
     labelPh: "Name this version (e.g. Draft 1, before sending to the editor)", keep: "Keep this version", del: "Delete", restore: "Go back to this version",
-    cmpNow: "Compare with now", cmpPrev: "Compare with the one before", now: "now", none: "(nothing)", empty: "No versions yet",
+    cmpNow: "vs now", cmpPrev: "vs the one before", now: "now", none: "(nothing)", empty: "No versions yet",
     reasons: { manual: "Kept", auto: "Auto", open: "Opened", "ai-send": "Sent to AI", "ai-before": "Before AI", "ai-after": "After AI", outside: "Before outside change", "outside-after": "After outside change", restore: "Before going back" },
     chars: (n) => `${n.toLocaleString()} chars`, stat: (s) => `${s.chg} changed · ${s.add} added · ${s.del} removed paragraphs`, same: "No differences in the text.",
     skip: "… unchanged paragraphs …", sameAsLast: "Same as the last version (kept the name only if given)", restored: "Went back to the version (the one before is kept too)" },
